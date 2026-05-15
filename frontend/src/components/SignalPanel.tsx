@@ -20,11 +20,20 @@ const TYPE_LABEL: Record<string, string> = {
 export function SignalPanel() {
   const signals = useStore((s) => s.signals)
   const indicators = useStore((s) => s.indicators)
-  const dbPositions = useStore((s) => s.dbPositions)
+  const portfolio = useStore((s) => s.portfolio)
 
-  // 预计止损：取第一笔持仓的开仓价 - 2×ATR
-  const firstPos = dbPositions[0]
-  const stopPrice = firstPos && indicators?.atr ? firstPos.open_price - 2 * indicators.atr : null
+  // V2 组合仓位触发节点
+  const avgCost = portfolio?.avg_cost ?? 0
+  const hasPosition = portfolio && portfolio.total_amount_g > 0
+
+  // 下次买入：布林下轨（无持仓时）或上次买入价-1×ATR（加仓时）
+  const nextBuyPrice = indicators?.bb_lower ?? null
+
+  // 止盈：avg_cost × 1.006 / 0.996（扣手续费后净盈0.6%）
+  const tpPrice = hasPosition ? avgCost * 1.006 / 0.996 : null
+
+  // 止损：avg_cost × 0.975 / 0.996（扣手续费后净亏-2.5%，强制减半）
+  const stopPrice = hasPosition ? avgCost * 0.975 / 0.996 : null
   const columns = [
     {
       title: '时间',
@@ -96,16 +105,16 @@ export function SignalPanel() {
       <div className="panel-title" style={{ flexWrap: 'wrap', gap: 8 }}>
         信号记录
         <span style={{ marginLeft: 'auto', display: 'flex', gap: 10, fontSize: 10 }}>
-          {indicators?.bb_lower ? (
+          {nextBuyPrice ? (
             <span>
               <span style={{ color: '#4a6a8a' }}>买入 </span>
-              <span style={{ color: '#00d4ff', fontFamily: "'Courier New', monospace" }}>{indicators.bb_lower.toFixed(2)}</span>
+              <span style={{ color: '#00d4ff', fontFamily: "'Courier New', monospace" }}>{nextBuyPrice.toFixed(2)}</span>
             </span>
           ) : null}
-          {indicators?.bb_upper ? (
+          {tpPrice ? (
             <span>
               <span style={{ color: '#ff4d4f' }}>止盈 </span>
-              <span style={{ color: '#ff4d4f', fontFamily: "'Courier New', monospace" }}>{indicators.bb_upper.toFixed(2)}</span>
+              <span style={{ color: '#ff4d4f', fontFamily: "'Courier New', monospace" }}>{tpPrice.toFixed(2)}</span>
             </span>
           ) : null}
           {stopPrice ? (
