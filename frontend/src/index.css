@@ -31,6 +31,51 @@ body {
 .ant-table-wrapper {
   background: transparent !important;
 }
+.panel-table-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.panel-table-body .ant-table-wrapper,
+.panel-table-body .ant-spin-nested-loading,
+.panel-table-body .ant-spin-container,
+.panel-table-body .ant-table,
+.panel-table-body .ant-table-container {
+  height: 100%;
+}
+.panel-table-body .ant-spin-container {
+  display: flex;
+  flex-direction: column;
+}
+.panel-table-body .ant-table {
+  flex: 1;
+  min-height: 0;
+}
+.panel-table-body .ant-table-container {
+  display: flex;
+  flex-direction: column;
+}
+.panel-table-body .ant-table-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto !important;
+  scrollbar-color: #1a3a5c #060b14;
+  scrollbar-width: thin;
+}
+.panel-table-body .ant-table-body::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.panel-table-body .ant-table-body::-webkit-scrollbar-track {
+  background: #060b14;
+}
+.panel-table-body .ant-table-body::-webkit-scrollbar-thumb {
+  background: #1a3a5c;
+  border-radius: 2px;
+}
+.panel-table-body .ant-table-body::-webkit-scrollbar-thumb:hover {
+  background: #2a5a8a;
+}
 .ant-spin-container {
   background: transparent !important;
 }

@@ -1,7 +1,35 @@
 import { useEffect, useRef } from 'react'
-import { createChart, ColorType, LineStyle } from 'lightweight-charts'
+import { createChart, ColorType, LineStyle, type Time } from 'lightweight-charts'
 import { useStore } from '../store/useStore'
 import { fetchTickPrices } from '../api/client'
+
+// 图表横轴显示使用的本地化语言。
+const CHART_LOCALE = 'zh-CN'
+// 容器宽度尚未计算完成时的兜底宽度。
+const DEFAULT_CHART_WIDTH = 600
+// 容器高度尚未计算完成时的兜底高度。
+const DEFAULT_CHART_HEIGHT = 200
+
+/**
+ * 按本地时区格式化实时图横轴时间。
+ *
+ * @param time lightweight-charts 传入的时间值。
+ * @returns 本地时间文本。
+ */
+function formatLocalTickTime(time: Time) {
+  if (typeof time === 'number') {
+    return new Date(time * 1000).toLocaleTimeString(CHART_LOCALE, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+  }
+  if (typeof time === 'string') {
+    return new Date(`${time}T00:00:00`).toLocaleDateString(CHART_LOCALE)
+  }
+  return new Date(time.year, time.month - 1, time.day).toLocaleDateString(CHART_LOCALE)
+}
 
 export function TickChart() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -27,15 +55,20 @@ export function TickChart() {
         vertLines: { color: '#0d1a2e' },
         horzLines: { color: '#0d1a2e' },
       },
+      localization: {
+        locale: CHART_LOCALE,
+        timeFormatter: formatLocalTickTime,
+      },
       timeScale: {
         timeVisible: true,
         secondsVisible: true,
         borderColor: '#1a3a5c',
+        tickMarkFormatter: formatLocalTickTime,
       },
       rightPriceScale: { borderColor: '#1a3a5c' },
       crosshair: { vertLine: { color: '#00d4ff44' }, horzLine: { color: '#00d4ff44' } },
-      width: containerRef.current.clientWidth,
-      height: 200,
+      width: containerRef.current.clientWidth || DEFAULT_CHART_WIDTH,
+      height: containerRef.current.clientHeight || DEFAULT_CHART_HEIGHT,
     })
     chartRef.current = chart
 
@@ -74,7 +107,17 @@ export function TickChart() {
       chart.timeScale().fitContent()
     })
 
-    return () => chart.remove()
+    const ro = new ResizeObserver(() => {
+      if (containerRef.current) {
+        chart.applyOptions({
+          width: containerRef.current.clientWidth || DEFAULT_CHART_WIDTH,
+          height: containerRef.current.clientHeight || DEFAULT_CHART_HEIGHT,
+        })
+      }
+    })
+    ro.observe(containerRef.current)
+
+    return () => { chart.remove(); ro.disconnect() }
   }, [])
 
   // 实时追加新 tick
@@ -96,7 +139,7 @@ export function TickChart() {
   }, [indicators, price])
 
   return (
-    <div style={{ borderTop: '1px solid #1a3a5c' }}>
+    <div style={{ borderTop: '1px solid #1a3a5c', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',border: '1px solid #1a3a5c', borderRadius: 4 }}>
       <div style={{
         padding: '4px 12px',
         fontSize: 10,
@@ -114,7 +157,7 @@ export function TickChart() {
           BB({indicators?.bb_lower?.toFixed(2)} ~ {indicators?.bb_upper?.toFixed(2)})
         </span>
       </div>
-      <div ref={containerRef} style={{ width: '100%' }} />
+      <div ref={containerRef} style={{ width: '100%', flex: 1, minHeight: 0 }} />
     </div>
   )
 }

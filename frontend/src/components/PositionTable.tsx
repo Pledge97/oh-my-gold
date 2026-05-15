@@ -6,6 +6,8 @@ import { useStore, DbPosition } from '../store/useStore'
 import { createPosition, closePosition, fetchPositions } from '../api/client'
 
 const SELL_FEE = 0.004
+// Table body fills the remaining panel height so the header can stay fixed.
+const TABLE_SCROLL_HEIGHT = '100%'
 
 interface BuyFormValues {
   amount_g: number
@@ -143,7 +145,7 @@ export function PositionTable() {
   const modalStyle = {
     content: { background: '#0a1628', border: '1px solid #1a3a5c' },
     header: { background: '#0a1628', borderBottom: '1px solid #1a3a5c' },
-    footer: { background: '#0a1628', borderTop: '1px solid #1a3a5c' },
+    footer: { background: '#0a1628' },
     mask: { backdropFilter: 'blur(2px)' },
   }
 
@@ -166,14 +168,19 @@ export function PositionTable() {
             手动建仓
           </Button>
         </div>
-        <Table<DbPosition>
-          dataSource={dbPositions}
-          columns={columns}
-          rowKey="id"
-          size="small"
-          pagination={false}
-          style={{ background: 'transparent' }}
-        />
+        <div className="panel-table-body">
+          <Table<DbPosition>
+            dataSource={dbPositions}
+            columns={columns}
+            rowKey="id"
+            size="small"
+            pagination={false}
+            scroll={{ y: TABLE_SCROLL_HEIGHT }}
+            sticky
+            tableLayout="fixed"
+            style={{ background: 'transparent' }}
+          />
+        </div>
       </div>
 
       {/* 建仓弹窗 */}

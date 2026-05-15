@@ -38,17 +38,12 @@ export default function App() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 480px', gap: 12, flex: 1 }}>
           {/* K线图 + Tick图 */}
           <div style={{
-            background: '#0a1628',
-            border: '1px solid #1a3a5c',
-            borderRadius: 4,
             overflow: 'hidden',
+            display: 'flex',
+            gap: 12,
+            flexDirection: 'column',
+            minHeight: 0,
           }}>
-            <div className="panel-title">
-              AU积存金 · 日K
-              <span style={{ marginLeft: 'auto', fontSize: 10, color: '#2a4a6a' }}>
-                布林带 BB(20,2)
-              </span>
-            </div>
             <PriceChart />
             <TickChart />
           </div>
