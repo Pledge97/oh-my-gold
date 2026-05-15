@@ -35,7 +35,7 @@ export default function App() {
       {/* 主内容 */}
       <div style={{ flex: 1, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* 中间区域：图表 + 右侧面板 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 12, flex: 1 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 480px', gap: 12, flex: 1 }}>
           {/* K线图 + Tick图 */}
           <div style={{
             background: '#0a1628',
