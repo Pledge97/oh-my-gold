@@ -21,8 +21,10 @@ class StrategyEngine:
         self._last_stop_loss_ts: int = 0
         self._last_buy_ts: int = 0
         self._last_buy_price: float = 0.0
-        self._STOP_LOSS_COOLDOWN_MS = 5 * 60 * 1000   # 止损后5分钟不开仓
-        self._BUY_COOLDOWN_MS = 15 * 60 * 1000         # 每次买入后15分钟内不再买
+        self._last_take_profit_ts: int = 0
+        self._STOP_LOSS_COOLDOWN_MS = 5 * 60 * 1000    # 止损后5分钟不开仓
+        self._BUY_COOLDOWN_MS = 5 * 60 * 1000           # 每次买入后5分钟内不再买
+        self._TAKE_PROFIT_COOLDOWN_MS = 5 * 60 * 1000  # 止盈后5分钟内不再止盈
 
     def on_tick(self, ctx: MarketContext) -> dict:
         # 1. 更新市场状态
@@ -34,9 +36,13 @@ class StrategyEngine:
 
         # 3. 检查已有持仓止盈/止损（熔断时也执行）
         closed = []
+        now_ms = int(time.time() * 1000)
+        in_tp_cooldown = (now_ms - self._last_take_profit_ts) < self._TAKE_PROFIT_COOLDOWN_MS
+
         for pos in self._open_positions:
             pos.peak_price = max(pos.peak_price, ctx.price)
 
+            # 止损：立即执行，不受冷却限制
             exit_sig = check_exit(ctx, pos.open_price, pos.peak_price)
             if exit_sig.triggered:
                 is_trend_exit = "趋势转跌" in exit_sig.reason
@@ -45,10 +51,16 @@ class StrategyEngine:
                 self.risk.record_pnl(pnl["pnl_yuan"], ctx.price)
                 if not is_trend_exit:
                     self.cb.on_stop_loss()
-                    self._last_stop_loss_ts = ctx.ts if ctx.ts else int(time.time() * 1000)
+                    self._last_stop_loss_ts = ctx.ts if ctx.ts else now_ms
+                else:
+                    self._last_take_profit_ts = now_ms
                 sig_label = "TAKE_PROFIT" if is_trend_exit else "STOP_LOSS"
                 self._save_signal(ctx, sig_label, pos.amount_g, exit_sig.reason)
                 closed.append(pos)
+                continue
+
+            # 止盈：冷却期内跳过，避免连续卖出
+            if in_tp_cooldown:
                 continue
 
             sell_sig = check_sell(ctx, pos.open_price, pos.peak_price)
@@ -57,6 +69,8 @@ class StrategyEngine:
                 self.risk.record_pnl(pnl["pnl_yuan"], ctx.price)
                 self._save_signal(ctx, "TAKE_PROFIT", pos.amount_g, sell_sig.reason)
                 closed.append(pos)
+                self._last_take_profit_ts = now_ms
+                in_tp_cooldown = True  # 本 tick 内只止盈一笔
 
         for pos in closed:
             self._open_positions.remove(pos)
@@ -64,7 +78,6 @@ class StrategyEngine:
         signal_out = None
 
         # 4. 开仓信号（熔断、风控暂停、冷却期内跳过）
-        now_ms = int(time.time() * 1000)
         in_sl_cooldown = (now_ms - self._last_stop_loss_ts) < self._STOP_LOSS_COOLDOWN_MS
         in_buy_cooldown = (now_ms - self._last_buy_ts) < self._BUY_COOLDOWN_MS
 
