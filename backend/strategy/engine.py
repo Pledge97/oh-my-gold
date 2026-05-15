@@ -216,7 +216,7 @@ class StrategyEngine:
     def _portfolio_snapshot(self, price: float, pnl_pct: float, ctx) -> dict:
         """生成 portfolio 字段的 dict 快照，含下次触发节点"""
         avg_cost = self._portfolio.avg_cost
-        atr = ctx.indicators.atr_5m
+        atr = max(ctx.indicators.atr_5m, 5.0)  # 最小5元，避免间距过小
         has_position = not self._portfolio.is_empty()
 
         # 下次买入触发价

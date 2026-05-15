@@ -101,7 +101,7 @@ def _check_oscillation_buy(
     """
     price = ctx.price
     bb_lower = ctx.indicators.bb_lower
-    atr = ctx.indicators.atr_5m
+    atr = max(ctx.indicators.atr_5m, 5.0)  # 最小5元，避免加仓间距过小
 
     if portfolio.is_empty():
         # 空仓：触及布林下轨才建仓
