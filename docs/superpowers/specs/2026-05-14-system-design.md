@@ -101,15 +101,15 @@ backend/
 │   └── ema.py                  # calc_ema(df, period) → Series
 ├── signals/                    # 信号层：输入指标快照，输出 SignalEvent，不含仓位逻辑
 │   ├── regime_signal.py        # 市场状态：基于ADX斜率判断 OSCILLATION/TREND_UP/TREND_DOWN/DECAY
-│   ├── buy_signal.py           # 买入信号：震荡布林下轨 + 趋势RSI回调
-│   ├── sell_signal.py          # 止盈信号：震荡0.6%目标 / 趋势EMA跟踪
-│   └── exit_signal.py          # 止损信号：ATR动态止损 + 固定兜底
+│   ├── buy_signal.py           # 买入信号：初始开仓50g（布林下轨）+ 加仓30g/20g（每跌1×ATR）
+│   ├── sell_signal.py          # 止盈信号：T仓盈利0.6%卖60%，1.2%卖20%，EMA跌破清仓
+│   └── exit_signal.py          # 止损信号：T仓浮亏-1.5%停加仓，-2.5%减半，-3.5%清仓
 ├── strategy/
-│   └── engine.py               # 纯调度器：on_tick() / on_kline() / on_signal()
+│   └── engine.py               # 纯调度器：on_tick()，计算T仓整体盈亏，协调信号层与风控层
 ├── risk/
-│   ├── circuit_breaker.py      # 三级熔断器
-│   ├── position.py             # 持仓管理（T仓/现金）
-│   └── risk_manager.py         # 日内风控（止损/日亏上限）
+│   ├── circuit_breaker.py      # 三级熔断器（含ATR波动熔断，阈值1.8倍均值）
+│   ├── position.py             # 组合持仓管理：统一计算T仓整体成本/浮盈/浮亏
+│   └── risk_manager.py         # 日内风控（日亏上限/连续亏损降仓）
 ├── db/
 │   ├── database.py             # 已完成：SQLite连接/初始化
 │   └── models.py               # 表结构常量
