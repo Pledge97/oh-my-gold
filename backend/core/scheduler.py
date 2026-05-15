@@ -101,5 +101,5 @@ async def tick_job(engine, broadcast_fn) -> None:
     _update_context(price)
     bus.publish("tick", {"price": price, "ts": int(time.time() * 1000)})
 
-    result = engine.on_tick(ctx)
+    result = engine.on_tick_v2(ctx)
     await broadcast_fn(result)
