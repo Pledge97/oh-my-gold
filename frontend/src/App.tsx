@@ -53,10 +53,14 @@ export default function App() {
             <TickChart />
           </div>
 
-          {/* 右侧：信号 + 持仓 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <SignalPanel />
-            <PositionTable />
+          {/* 右侧：信号 + 持仓，各占一半 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <SignalPanel />
+            </div>
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <PositionTable />
+            </div>
           </div>
         </div>
 

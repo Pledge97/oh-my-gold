@@ -102,7 +102,7 @@ export function PositionTable() {
 
   return (
     <>
-      <div style={{ background: '#0a1628', border: '1px solid #1a3a5c', borderRadius: 4, overflow: 'hidden' }}>
+      <div style={{ background: '#0a1628', border: '1px solid #1a3a5c', borderRadius: 4, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div className="panel-title" style={{ display: 'flex', alignItems: 'center' }}>
           当前持仓
           <span style={{ marginLeft: 8, fontSize: 10, color: dbPositions.length > 0 ? '#00ff88' : '#2a4a6a' }}>

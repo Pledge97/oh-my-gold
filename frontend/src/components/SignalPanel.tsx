@@ -81,16 +81,22 @@ export function SignalPanel() {
       border: '1px solid #1a3a5c',
       borderRadius: 4,
       overflow: 'hidden',
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: 0,
     }}>
       <div className="panel-title">信号记录</div>
+      <div style={{ flex: 1, overflow: 'auto' }}>
       <Table<Signal>
         dataSource={signals}
         columns={columns}
         rowKey="id"
         size="small"
-        pagination={{ pageSize: 8, size: 'small' }}
+        pagination={false}
         style={{ background: 'transparent' }}
       />
+      </div>
     </div>
   )
 }
