@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { Button, DatePicker, Form, InputNumber, Modal, Table } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { useStore } from '../store/useStore'
+import { useStore, DbPosition } from '../store/useStore'
 import { createPosition, fetchPositions } from '../api/client'
+
+const SELL_FEE = 0.004
 
 interface FormValues {
   amount_g: number
@@ -11,33 +13,16 @@ interface FormValues {
   open_date: dayjs.Dayjs
 }
 
-// REST持仓（含手动建仓），独立于WS推送
-interface DbPosition {
-  id: number
-  open_ts: number
-  open_price: number
-  amount_g: number
-  status: string
-  pnl_yuan: number | null
-  pnl_g: number | null
-}
-
 export function PositionTable() {
-  const [positions, setPositions] = useState<DbPosition[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form] = Form.useForm<FormValues>()
-  const lastSignalTs = useStore(s => s.lastSignalTs)
+  const { lastSignalTs, dbPositions, setDbPositions, price } = useStore()
 
-  const reload = () => fetchPositions('OPEN').then(setPositions)
+  const reload = () => fetchPositions('OPEN').then(setDbPositions)
 
-  // 初始加载
   useEffect(() => { reload() }, [])
-
-  // 有新交易信号时刷新
-  useEffect(() => {
-    if (lastSignalTs > 0) reload()
-  }, [lastSignalTs])
+  useEffect(() => { if (lastSignalTs > 0) reload() }, [lastSignalTs])
 
   const handleSubmit = async () => {
     const values = await form.validateFields()
@@ -87,14 +72,28 @@ export function PositionTable() {
     },
     {
       title: '盈亏(元)',
-      dataIndex: 'pnl_yuan',
-      key: 'pnl_yuan',
-      render: (v: number | null) => {
-        if (v == null) return <span style={{ color: '#2a4a6a', fontSize: 11 }}>—</span>
-        const color = v >= 0 ? '#00ff88' : '#ff4d4f'
+      key: 'pnl',
+      render: (_: unknown, row: DbPosition) => {
+        if (!price || price === 0) return <span style={{ color: '#2a4a6a' }}>—</span>
+        const pnl = (price - row.open_price) * row.amount_g - price * row.amount_g * SELL_FEE
+        const color = pnl >= 0 ? '#00ff88' : '#ff4d4f'
         return (
           <span style={{ color, fontFamily: "'Courier New', monospace", fontSize: 12, textShadow: `0 0 6px ${color}44` }}>
-            {v >= 0 ? '+' : ''}{v.toFixed(2)}
+            {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
+          </span>
+        )
+      },
+    },
+    {
+      title: '盈亏%',
+      key: 'pnl_pct',
+      render: (_: unknown, row: DbPosition) => {
+        if (!price || price === 0) return <span style={{ color: '#2a4a6a' }}>—</span>
+        const pct = (price - row.open_price) / row.open_price
+        const color = pct >= 0 ? '#00ff88' : '#ff4d4f'
+        return (
+          <span style={{ color, fontFamily: "'Courier New', monospace", fontSize: 12 }}>
+            {pct >= 0 ? '+' : ''}{(pct * 100).toFixed(2)}%
           </span>
         )
       },
@@ -106,8 +105,8 @@ export function PositionTable() {
       <div style={{ background: '#0a1628', border: '1px solid #1a3a5c', borderRadius: 4, overflow: 'hidden' }}>
         <div className="panel-title" style={{ display: 'flex', alignItems: 'center' }}>
           当前持仓
-          <span style={{ marginLeft: 8, fontSize: 10, color: positions.length > 0 ? '#00ff88' : '#2a4a6a' }}>
-            {positions.length} 笔
+          <span style={{ marginLeft: 8, fontSize: 10, color: dbPositions.length > 0 ? '#00ff88' : '#2a4a6a' }}>
+            {dbPositions.length} 笔
           </span>
           <Button
             size="small"
@@ -127,7 +126,7 @@ export function PositionTable() {
           </Button>
         </div>
         <Table<DbPosition>
-          dataSource={positions}
+          dataSource={dbPositions}
           columns={columns}
           rowKey="id"
           size="small"
@@ -137,11 +136,7 @@ export function PositionTable() {
       </div>
 
       <Modal
-        title={
-          <span style={{ color: '#4fc3f7', letterSpacing: '0.08em', fontSize: 13 }}>
-            手动建仓
-          </span>
-        }
+        title={<span style={{ color: '#4fc3f7', letterSpacing: '0.08em', fontSize: 13 }}>手动建仓</span>}
         open={open}
         onOk={handleSubmit}
         onCancel={() => { setOpen(false); form.resetFields() }}
@@ -155,49 +150,27 @@ export function PositionTable() {
           mask: { backdropFilter: 'blur(2px)' },
         }}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{ amount_g: 20, open_date: dayjs() }}
-          style={{ marginTop: 16 }}
-        >
+        <Form form={form} layout="vertical" initialValues={{ amount_g: 20, open_date: dayjs() }} style={{ marginTop: 16 }}>
           <Form.Item
             label={<span style={{ color: '#4fc3f7', fontSize: 12 }}>买入克数 (g)</span>}
             name="amount_g"
-            rules={[{ required: true, message: '请输入克数' }, { type: 'number', min: 0.01, message: '克数必须大于0' }]}
+            rules={[{ required: true, message: '请输入克数' }, { type: 'number', min: 0.01 }]}
           >
-            <InputNumber
-              style={{ width: '100%', background: '#060b14', borderColor: '#1a3a5c', color: '#c8d8e8' }}
-              min={0.01}
-              step={1}
-              precision={2}
-              suffix="g"
-            />
+            <InputNumber style={{ width: '100%', background: '#060b14', borderColor: '#1a3a5c', color: '#c8d8e8' }} min={0.01} step={1} precision={2} suffix="g" />
           </Form.Item>
-
           <Form.Item
             label={<span style={{ color: '#4fc3f7', fontSize: 12 }}>买入价格 (元/g)</span>}
             name="open_price"
-            rules={[{ required: true, message: '请输入买入价格' }, { type: 'number', min: 0.01, message: '价格必须大于0' }]}
+            rules={[{ required: true, message: '请输入买入价格' }, { type: 'number', min: 0.01 }]}
           >
-            <InputNumber
-              style={{ width: '100%', background: '#060b14', borderColor: '#1a3a5c', color: '#c8d8e8' }}
-              min={0.01}
-              step={0.01}
-              precision={2}
-              prefix="¥"
-            />
+            <InputNumber style={{ width: '100%', background: '#060b14', borderColor: '#1a3a5c', color: '#c8d8e8' }} min={0.01} step={0.01} precision={2} prefix="¥" />
           </Form.Item>
-
           <Form.Item
             label={<span style={{ color: '#4fc3f7', fontSize: 12 }}>买入日期</span>}
             name="open_date"
             rules={[{ required: true, message: '请选择买入日期' }]}
           >
-            <DatePicker
-              style={{ width: '100%', background: '#060b14', borderColor: '#1a3a5c', color: '#c8d8e8' }}
-              format="YYYY-MM-DD"
-            />
+            <DatePicker style={{ width: '100%', background: '#060b14', borderColor: '#1a3a5c', color: '#c8d8e8' }} format="YYYY-MM-DD" />
           </Form.Item>
         </Form>
       </Modal>

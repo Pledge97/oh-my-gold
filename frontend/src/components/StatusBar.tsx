@@ -16,9 +16,16 @@ const STATE_LABEL: Record<string, string> = {
 }
 
 export function StatusBar() {
-  const { price, marketState, cbActive, cbLevel, positions } = useStore()
-  const totalPnl = (positions ?? []).reduce((s, p) => s + p.pnl_yuan, 0)
+  const { price, marketState, cbActive, cbLevel, dbPositions } = useStore()
   const stateColor = STATE_COLOR[marketState] ?? '#888'
+
+  const totalPnl = dbPositions.reduce((sum, pos) => {
+    if (!price) return sum
+    return sum + (price - pos.open_price) * pos.amount_g - price * pos.amount_g * 0.004
+  }, 0)
+
+  const totalCost = dbPositions.reduce((sum, pos) => sum + pos.open_price * pos.amount_g, 0)
+  const totalPnlPct = totalCost > 0 ? totalPnl / totalCost : 0
 
   return (
     <div style={{
@@ -104,6 +111,9 @@ export function StatusBar() {
           fontFamily: "'Courier New', monospace",
         }}>
           {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)} 元
+          <span style={{ fontSize: 12, marginLeft: 6, opacity: 0.85 }}>
+            ({totalPnlPct >= 0 ? '+' : ''}{(totalPnlPct * 100).toFixed(2)}%)
+          </span>
         </span>
       </div>
 
