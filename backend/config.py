@@ -64,3 +64,27 @@ TICK_INTERVAL_SEC = 5
 
 # 数据库
 DB_PATH = "data/gold.db"
+
+# ── 组合仓位管理（V2） ──────────────────────────────────────
+# 分批建仓量（克）
+LOT1_AMOUNT_G: float = 50.0   # 第1批：初始开仓
+LOT2_AMOUNT_G: float = 30.0   # 第2批：加仓
+LOT3_AMOUNT_G: float = 20.0   # 第3批：加仓
+T_MAX_AMOUNT_G: float = 100.0  # T仓最大持仓量
+
+# 加仓触发间距（ATR₁₄ 的倍数）
+ATR_ADD_LOT_MULTIPLIER: float = 1.0
+
+# 组合止损阈值（负数表示亏损）
+STOP_ADD_LOSS_PCT: float = -0.015   # 浮亏超过此值停止加仓
+FORCE_HALF_LOSS_PCT: float = -0.025  # 浮亏超过此值强制减仓50%
+CLEAR_ALL_LOSS_PCT: float = -0.035   # 浮亏超过此值全部清仓
+
+# 组合止盈阈值
+TAKE_PROFIT_1_PCT: float = 0.006   # 第1次止盈触发盈利率
+TAKE_PROFIT_2_PCT: float = 0.012   # 第2次止盈触发盈利率
+TAKE_PROFIT_1_SELL_RATIO: float = 0.60  # 第1次止盈卖出比例
+TAKE_PROFIT_2_SELL_RATIO: float = 0.20  # 第2次止盈卖出比例
+
+# 隔夜追踪止损（从最高盈利回撤超过此值清仓）
+OVERNIGHT_TRAILING_STOP_PCT: float = 0.008
