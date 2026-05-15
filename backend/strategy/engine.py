@@ -18,8 +18,11 @@ class StrategyEngine:
         self.cb = CircuitBreaker()
         self.risk = RiskManager()
         self._open_positions: list[Position] = []
-        self._last_stop_loss_ts: int = 0  # 最近一次止损时间戳（ms）
-        self._STOP_LOSS_COOLDOWN_MS = 5 * 60 * 1000  # 止损后5分钟内不开新仓
+        self._last_stop_loss_ts: int = 0
+        self._last_buy_ts: int = 0
+        self._last_buy_price: float = 0.0
+        self._STOP_LOSS_COOLDOWN_MS = 5 * 60 * 1000   # 止损后5分钟不开仓
+        self._BUY_COOLDOWN_MS = 15 * 60 * 1000         # 每次买入后15分钟内不再买
 
     def on_tick(self, ctx: MarketContext) -> dict:
         # 1. 更新市场状态
@@ -60,15 +63,27 @@ class StrategyEngine:
 
         signal_out = None
 
-        # 4. 开仓信号（熔断、风控暂停、止损冷却期内跳过）
+        # 4. 开仓信号（熔断、风控暂停、冷却期内跳过）
         now_ms = int(time.time() * 1000)
-        in_cooldown = (now_ms - self._last_stop_loss_ts) < self._STOP_LOSS_COOLDOWN_MS
-        if not self.cb.is_active and self.risk.can_trade() and ctx.ready and not in_cooldown:
+        in_sl_cooldown = (now_ms - self._last_stop_loss_ts) < self._STOP_LOSS_COOLDOWN_MS
+        in_buy_cooldown = (now_ms - self._last_buy_ts) < self._BUY_COOLDOWN_MS
+
+        # 有持仓时，加仓要求价格比上次开仓再低至少1个ATR
+        atr = ctx.indicators.atr_5m or 3.0
+        price_far_enough = (
+            len(self._open_positions) == 0
+            or ctx.price <= self._last_buy_price - atr
+        )
+
+        if (not self.cb.is_active and self.risk.can_trade() and ctx.ready
+                and not in_sl_cooldown and not in_buy_cooldown and price_far_enough):
             unit_g = self.risk.unit_buy_g()
             buy_sig = check_buy(ctx, len(self._open_positions), unit_g)
             if buy_sig.triggered:
                 pos = self.positions.open(ctx.price, buy_sig.amount_g)
                 self._open_positions.append(pos)
+                self._last_buy_ts = now_ms
+                self._last_buy_price = ctx.price
                 self._save_signal(ctx, "BUY", buy_sig.amount_g, buy_sig.reason)
                 signal_out = {"type": "BUY", "amount_g": buy_sig.amount_g,
                               "reason": buy_sig.reason}
