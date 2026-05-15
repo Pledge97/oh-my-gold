@@ -106,8 +106,8 @@ export function StatusBar() {
         </span>
         <span style={{
           fontSize: 16, fontWeight: 700,
-          color: totalPnl >= 0 ? '#00ff88' : '#ff4d4f',
-          textShadow: totalPnl >= 0 ? '0 0 8px rgba(0,255,136,0.4)' : '0 0 8px rgba(255,77,79,0.4)',
+          color: totalPnl >= 0 ? '#ff4d4f' : '#00ff88',
+          textShadow: totalPnl >= 0 ? '0 0 8px rgba(255,77,79,0.4)' : '0 0 8px rgba(0,255,136,0.4)',
           fontFamily: "'Courier New', monospace",
         }}>
           {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)} 元

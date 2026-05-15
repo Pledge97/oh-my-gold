@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore'
 import type { Signal } from '../types'
 
 const TYPE_COLOR: Record<string, string> = {
-  BUY: '#00ff88',
+  BUY: '#ff4d4f',
   TAKE_PROFIT: '#00d4ff',
   STOP_LOSS: '#ff4d4f',
 }

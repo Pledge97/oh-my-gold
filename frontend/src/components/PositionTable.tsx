@@ -112,7 +112,7 @@ export function PositionTable() {
         if (!price || price === 0) return <span style={{ color: '#2a4a6a' }}>—</span>
         const pnl = (price - row.open_price) * row.amount_g - price * row.amount_g * SELL_FEE
         const pct = pnl / (row.open_price * row.amount_g)
-        const color = pnl >= 0 ? '#00ff88' : '#ff4d4f'
+        const color = pnl >= 0 ? '#ff4d4f' : '#00ff88'
         return (
           <span style={{ color, fontFamily: "'Courier New', monospace", fontSize: 12, textShadow: `0 0 6px ${color}44` }}>
             {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
@@ -229,7 +229,7 @@ export function PositionTable() {
           {sellingPos && price > 0 && (() => {
             const cp = sellForm.getFieldValue('close_price') || price
             const pnl = (cp - sellingPos.open_price) * sellingPos.amount_g - cp * sellingPos.amount_g * SELL_FEE
-            const color = pnl >= 0 ? '#00ff88' : '#ff4d4f'
+            const color = pnl >= 0 ? '#ff4d4f' : '#00ff88'
             return (
               <div style={{ padding: '8px 12px', background: '#060b14', border: '1px solid #1a3a5c', borderRadius: 4, fontSize: 12 }}>
                 <span style={{ color: '#4fc3f7' }}>预计盈亏：</span>

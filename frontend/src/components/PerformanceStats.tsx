@@ -46,7 +46,7 @@ export function PerformanceStats() {
   const perf = useStore(s => s.performance)
   if (!perf) return null
 
-  const pnlColor = perf.total_pnl_yuan >= 0 ? '#00ff88' : '#ff4d4f'
+  const pnlColor = perf.total_pnl_yuan >= 0 ? '#ff4d4f' : '#00ff88'
 
   return (
     <div style={{
@@ -73,13 +73,13 @@ export function PerformanceStats() {
         <StatCard
           label="平均盈利"
           value={'+' + perf.avg_win_yuan.toFixed(2)}
-          color="#00ff88"
+          color="#ff4d4f"
           unit="元"
         />
         <StatCard
           label="平均亏损"
           value={perf.avg_loss_yuan.toFixed(2)}
-          color="#ff4d4f"
+          color="#00ff88"
           unit="元"
         />
         <StatCard
