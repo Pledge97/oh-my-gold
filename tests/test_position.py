@@ -83,7 +83,9 @@ def test_portfolio_add_two_lots():
 def test_portfolio_pnl_pct_profit():
     pos = make_portfolio()
     pos.add_lot(1, 1000.0, 50.0, 1000)
-    assert pos.pnl_pct(current_price=1010.0) == pytest.approx(0.01)
+    # 扣除0.4%手续费后：(1010 * 0.996 - 1000) / 1000 = 0.5960%
+    expected = (1010.0 * 0.996 - 1000.0) / 1000.0
+    assert pos.pnl_pct(current_price=1010.0) == pytest.approx(expected)
 
 
 def test_portfolio_pnl_pct_loss():
@@ -92,7 +94,8 @@ def test_portfolio_pnl_pct_loss():
     pos.add_lot(2, 990.0, 30.0, 2000)
     total_cost = 50 * 1000 + 30 * 990
     market_val = 80 * 950
-    expected = (market_val - total_cost) / total_cost
+    fee = market_val * 0.004
+    expected = (market_val - fee - total_cost) / total_cost
     assert pos.pnl_pct(current_price=950.0) == pytest.approx(expected)
 
 

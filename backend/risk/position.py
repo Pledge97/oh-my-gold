@@ -125,10 +125,13 @@ class PortfolioPosition:
         return self._total_amount_g == 0.0
 
     def pnl_pct(self, current_price: float) -> float:
-        """T仓整体浮盈浮亏率 = (当前市值 - 总成本) / 总成本"""
+        """T仓整体浮盈浮亏率，扣除卖出手续费后的净盈亏率"""
         if self._total_cost == 0:
             return 0.0
-        return (current_price * self._total_amount_g - self._total_cost) / self._total_cost
+        from backend import config
+        market_value = current_price * self._total_amount_g
+        fee = market_value * config.SELL_FEE_RATE
+        return (market_value - fee - self._total_cost) / self._total_cost
 
     def add_lot(self, lot_index: int, price: float, amount_g: float, ts: int) -> Lot:
         """买入一批，返回 Lot 对象（调用方负责写库）"""

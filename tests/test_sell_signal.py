@@ -30,9 +30,10 @@ def test_no_signal_when_empty():
 
 
 def test_tp1_triggers_at_0_6_pct():
-    """盈利恰好达到 0.6% 时触发第1次止盈，卖出 60%"""
+    """扣除0.4%手续费后净盈利达到0.6%时触发第1次止盈"""
     pos = make_portfolio(avg_cost=1000.0, total_g=50.0)
-    ctx = make_context(price=1006.0, ema_5m_20=990.0)
+    # 触发价 = 1000 * 1.006 / 0.996 ≈ 1010.05
+    ctx = make_context(price=1010.05, ema_5m_20=990.0)
     signal = check_sell_signal(pos, ctx)
     assert signal is not None
     assert signal.exit_reason == ExitReason.TAKE_PROFIT_1
@@ -57,10 +58,11 @@ def test_tp1_only_fires_once():
 
 
 def test_tp2_triggers_at_1_2_pct():
-    """tp1 已执行且盈利达到 1.2% 时触发第2次止盈，卖出 20%"""
+    """扣除0.4%手续费后净盈利达到1.2%时触发第2次止盈，卖出20%"""
     pos = make_portfolio(avg_cost=1000.0, total_g=50.0)
     pos.mark_tp1()
-    ctx = make_context(price=1012.0, ema_5m_20=990.0)
+    # 触发价 = 1000 * 1.012 / 0.996 ≈ 1016.07
+    ctx = make_context(price=1016.07, ema_5m_20=990.0)
     signal = check_sell_signal(pos, ctx)
     assert signal is not None
     assert signal.exit_reason == ExitReason.TAKE_PROFIT_2

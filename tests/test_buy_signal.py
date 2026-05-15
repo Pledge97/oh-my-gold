@@ -69,11 +69,11 @@ def test_add_lot2_triggers_after_1atr_drop():
 
 
 def test_add_lot3_triggers_after_another_atr_drop():
-    """持仓80g，价格从上次买入再跌1×ATR触发第3批加仓"""
+    """持仓80g，价格从上次买入再跌1×ATR触发第3批加仓（atr=3，跌到986，浮亏未超-1.5%）"""
     pos = PortfolioPosition(round_id=1)
     pos.add_lot(1, 1000.0, LOT1_AMOUNT_G, 1000)
     pos.add_lot(2, 989.0, LOT2_AMOUNT_G, 2000)
-    ctx = make_context(price=983.0, bb_lower=1001.0, atr_5m=5.0)
+    ctx = make_context(price=986.0, bb_lower=1001.0, atr_5m=3.0)
     signal = check_buy_signal(ctx, pos, circuit_breaker_active=False,
                               last_buy_price=989.0)
     assert signal is not None
