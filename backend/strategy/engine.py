@@ -10,7 +10,7 @@ from backend.signals.sell_signal import check_sell, check_sell_signal
 from backend.signals.exit_signal import check_exit, check_exit_signal
 from backend.db.database import get_conn
 from typing import Optional
-import config
+from backend import config
 import time
 
 
