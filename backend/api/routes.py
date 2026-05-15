@@ -1,6 +1,8 @@
 # backend/api/routes.py
 from fastapi import APIRouter
+from pydantic import BaseModel
 from backend.db.database import get_conn
+from datetime import datetime
 
 router = APIRouter(prefix="/api")
 
@@ -21,6 +23,26 @@ def get_positions(status: str = "OPEN"):
             "SELECT * FROM positions WHERE status=? ORDER BY open_ts DESC", (status,)
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+class ManualPositionIn(BaseModel):
+    amount_g: float
+    open_price: float
+    open_date: str  # YYYY-MM-DD
+
+
+@router.post("/positions")
+def create_position(body: ManualPositionIn):
+    dt = datetime.strptime(body.open_date, "%Y-%m-%d")
+    ts = int(dt.timestamp() * 1000)
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO positions (open_ts, open_price, amount_g, status) VALUES (?, ?, ?, 'OPEN')",
+            (ts, body.open_price, body.amount_g),
+        )
+        pos_id = cur.lastrowid
+    return {"id": pos_id, "open_ts": ts, "open_price": body.open_price,
+            "amount_g": body.amount_g, "status": "OPEN"}
 
 
 @router.get("/performance")

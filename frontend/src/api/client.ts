@@ -14,3 +14,10 @@ export const fetchDailyPrices = (days = 60) =>
 
 export const resumeCircuitBreaker = () =>
   fetch(`${BASE}/circuit-breaker/resume`, { method: 'POST' }).then(r => r.json())
+
+export const createPosition = (body: { amount_g: number; open_price: number; open_date: string }) =>
+  fetch(`${BASE}/positions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(r => r.json())
