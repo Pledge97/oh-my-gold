@@ -1,5 +1,6 @@
 # backend/main.py
 from contextlib import asynccontextmanager
+from datetime import datetime
 from fastapi import FastAPI, WebSocket
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI):
         tick_job,
         "interval",
         seconds=config.TICK_INTERVAL_SEC,
+        next_run_time=datetime.now(),  # 启动后立即执行第一次
         kwargs={"engine": engine, "broadcast_fn": broadcast},
     )
     scheduler.start()
