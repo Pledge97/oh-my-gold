@@ -46,7 +46,7 @@ export interface WsMessage {
   indicators: Indicators
   signal: { type: string; amount_g: number; reason: string } | null
   circuit_breaker: { active: boolean; level: number | null }
-  /** V2 组合持仓，替换原 V1 的 positions 字段 */
+  positions: Position[]
   portfolio: PortfolioPosition
 }
 
