@@ -106,12 +106,12 @@ export function PositionTable() {
       ),
     },
     {
-      title: '盈亏(元)',
+      title: '盈亏',
       key: 'pnl',
       render: (_: unknown, row: DbPosition) => {
         if (!price || price === 0) return <span style={{ color: '#2a4a6a' }}>—</span>
         const pnl = (price - row.open_price) * row.amount_g - price * row.amount_g * SELL_FEE
-        const pct = (price - row.open_price) / row.open_price
+        const pct = pnl / (row.open_price * row.amount_g)
         const color = pnl >= 0 ? '#00ff88' : '#ff4d4f'
         return (
           <span style={{ color, fontFamily: "'Courier New', monospace", fontSize: 12, textShadow: `0 0 6px ${color}44` }}>
