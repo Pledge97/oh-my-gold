@@ -4,6 +4,7 @@ import { useStore } from './store/useStore'
 import { fetchSignals, fetchPerformance, fetchDailyPrices } from './api/client'
 import { StatusBar } from './components/StatusBar'
 import { PriceChart } from './components/PriceChart'
+import { TickChart } from './components/TickChart'
 import { SignalPanel } from './components/SignalPanel'
 import { PositionTable } from './components/PositionTable'
 import { PerformanceStats } from './components/PerformanceStats'
@@ -35,7 +36,7 @@ export default function App() {
       <div style={{ flex: 1, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* 中间区域：图表 + 右侧面板 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 12, flex: 1 }}>
-          {/* K线图 */}
+          {/* K线图 + Tick图 */}
           <div style={{
             background: '#0a1628',
             border: '1px solid #1a3a5c',
@@ -49,6 +50,7 @@ export default function App() {
               </span>
             </div>
             <PriceChart />
+            <TickChart />
           </div>
 
           {/* 右侧：信号 + 持仓 */}

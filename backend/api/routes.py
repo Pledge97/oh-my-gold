@@ -73,8 +73,19 @@ def get_performance():
     }
 
 
-@router.get("/prices/daily")
-def get_daily_prices(days: int = 30):
+@router.get("/prices/tick")
+def get_tick_prices(hours: int = 24):
+    since_ms = int((datetime.now().timestamp() - hours * 3600) * 1000)
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT ts, price FROM prices WHERE ts >= ? ORDER BY ts ASC",
+            (since_ms,)
+        ).fetchall()
+        if not rows:
+            rows = conn.execute(
+                "SELECT ts, price FROM prices ORDER BY ts ASC"
+            ).fetchall()
+    return [{"ts": r["ts"], "price": r["price"]} for r in rows]
     with get_conn() as conn:
         rows = conn.execute(
             "SELECT date, open, high, low, close FROM daily_prices "

@@ -12,6 +12,9 @@ export const fetchPerformance = () =>
 export const fetchDailyPrices = (days = 60) =>
   fetch(`${BASE}/prices/daily?days=${days}`).then(r => r.json())
 
+export const fetchTickPrices = (hours = 24) =>
+  fetch(`${BASE}/prices/tick?hours=${hours}`).then(r => r.json())
+
 export const resumeCircuitBreaker = () =>
   fetch(`${BASE}/circuit-breaker/resume`, { method: 'POST' }).then(r => r.json())
 
