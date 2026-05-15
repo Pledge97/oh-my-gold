@@ -111,24 +111,14 @@ export function PositionTable() {
       render: (_: unknown, row: DbPosition) => {
         if (!price || price === 0) return <span style={{ color: '#2a4a6a' }}>—</span>
         const pnl = (price - row.open_price) * row.amount_g - price * row.amount_g * SELL_FEE
+        const pct = (price - row.open_price) / row.open_price
         const color = pnl >= 0 ? '#00ff88' : '#ff4d4f'
         return (
           <span style={{ color, fontFamily: "'Courier New', monospace", fontSize: 12, textShadow: `0 0 6px ${color}44` }}>
             {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
-          </span>
-        )
-      },
-    },
-    {
-      title: '盈亏%',
-      key: 'pnl_pct',
-      render: (_: unknown, row: DbPosition) => {
-        if (!price || price === 0) return <span style={{ color: '#2a4a6a' }}>—</span>
-        const pct = (price - row.open_price) / row.open_price
-        const color = pct >= 0 ? '#00ff88' : '#ff4d4f'
-        return (
-          <span style={{ color, fontFamily: "'Courier New', monospace", fontSize: 12 }}>
-            {pct >= 0 ? '+' : ''}{(pct * 100).toFixed(2)}%
+            <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.8 }}>
+              ({pct >= 0 ? '+' : ''}{(pct * 100).toFixed(2)}%)
+            </span>
           </span>
         )
       },
