@@ -36,6 +36,9 @@ export interface PortfolioPosition {
   pnl_yuan: number
   tp1_done: boolean
   tp2_done: boolean
+  next_buy: number | null   // 下次买入触发价
+  next_tp: number | null    // 下次止盈触发价
+  next_stop: number | null  // 下次止损触发价
   lots: Lot[]
 }
 

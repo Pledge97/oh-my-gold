@@ -210,22 +210,44 @@ class StrategyEngine:
                 "active": self.cb.is_active,
                 "level": self.cb.state.level if self.cb.is_active else None,
             },
-            "portfolio": self._portfolio_snapshot(ctx.price, pnl_pct),
+            "portfolio": self._portfolio_snapshot(ctx.price, pnl_pct, ctx),
         }
 
-    def _portfolio_snapshot(self, price: float, pnl_pct: float) -> dict:
-        """生成 portfolio 字段的 dict 快照"""
+    def _portfolio_snapshot(self, price: float, pnl_pct: float, ctx) -> dict:
+        """生成 portfolio 字段的 dict 快照，含下次触发节点"""
+        avg_cost = self._portfolio.avg_cost
+        atr = ctx.indicators.atr_5m
+        has_position = not self._portfolio.is_empty()
+
+        # 下次买入触发价
+        if not has_position:
+            next_buy = ctx.indicators.bb_lower or None
+        elif self._portfolio.total_amount_g < config.T_MAX_AMOUNT_G and atr:
+            last_lot = self._portfolio.lots[-1] if self._portfolio.lots else None
+            next_buy = round(last_lot.open_price - config.ATR_ADD_LOT_MULTIPLIER * atr, 2) if last_lot else None
+        else:
+            next_buy = None  # 满仓
+
+        # 止盈触发价：avg_cost × 1.006 / 0.996（扣手续费后净盈0.6%）
+        next_tp = round(avg_cost * (1 + config.TAKE_PROFIT_1_PCT) / (1 - config.SELL_FEE_RATE), 2) if has_position else None
+
+        # 止损触发价：avg_cost × 0.975 / 0.996（扣手续费后净亏-2.5%，强制减半）
+        next_stop = round(avg_cost * (1 + config.FORCE_HALF_LOSS_PCT) / (1 - config.SELL_FEE_RATE), 2) if has_position else None
+
         return {
             "round_id": self._portfolio.round_id,
             "total_amount_g": self._portfolio.total_amount_g,
             "total_cost": self._portfolio.total_cost,
-            "avg_cost": self._portfolio.avg_cost,
+            "avg_cost": avg_cost,
             "pnl_pct": pnl_pct,
             "pnl_yuan": round(
                 price * self._portfolio.total_amount_g - self._portfolio.total_cost, 2
             ),
             "tp1_done": self._portfolio.tp1_done,
             "tp2_done": self._portfolio.tp2_done,
+            "next_buy": next_buy,
+            "next_tp": next_tp,
+            "next_stop": next_stop,
             "lots": [
                 {
                     "lot_index": lot.lot_index,
