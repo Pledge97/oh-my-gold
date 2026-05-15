@@ -26,6 +26,8 @@ export function StatusBar() {
 
   const totalCost = dbPositions.reduce((sum, pos) => sum + pos.open_price * pos.amount_g, 0)
   const totalPnlPct = totalCost > 0 ? totalPnl / totalCost : 0
+  const totalAmountG = dbPositions.reduce((sum, pos) => sum + pos.amount_g, 0)
+  const totalMarketValue = price ? price * totalAmountG : 0
 
   return (
     <div style={{
@@ -60,22 +62,6 @@ export function StatusBar() {
         </Typography.Text>
       </div>
 
-      <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
-
-      {/* 市场状态 */}
-      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
-        <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-          市场状态
-        </span>
-        <span style={{
-          fontSize: 13, fontWeight: 600, color: stateColor,
-          textShadow: `0 0 8px ${stateColor}66`,
-          letterSpacing: '0.05em',
-        }}>
-          ● {STATE_LABEL[marketState] ?? marketState}
-        </span>
-      </div>
-
       {/* 熔断 */}
       {cbActive && (
         <>
@@ -99,6 +85,32 @@ export function StatusBar() {
 
       <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
 
+      {/* 持仓克数 */}
+      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
+        <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          持仓克数
+        </span>
+        <span style={{ fontSize: 16, fontWeight: 700, color: '#c8d8e8', fontFamily: "'Courier New', monospace" }}>
+          {totalAmountG.toFixed(1)}
+          <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7 }}>g</span>
+        </span>
+      </div>
+
+      <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+
+      {/* 持仓金额 */}
+      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
+        <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          持仓金额
+        </span>
+        <span style={{ fontSize: 16, fontWeight: 700, color: '#f0d060', fontFamily: "'Courier New', monospace" }}>
+          {totalMarketValue.toFixed(0)}
+          <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7 }}>元</span>
+        </span>
+      </div>
+
+      <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+
       {/* 持仓盈亏 */}
       <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
         <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
@@ -117,13 +129,28 @@ export function StatusBar() {
         </span>
       </div>
 
-      {/* 右侧时间 */}
-      <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-        <div style={{ fontSize: 10, color: '#2a4a6a', letterSpacing: '0.1em' }}>LIVE</div>
-        <div style={{
-          fontSize: 11, color: '#4fc3f7', fontFamily: "'Courier New', monospace",
-        }}>
-          {new Date().toLocaleTimeString('zh-CN', { hour12: false })}
+      {/* 右侧：市场状态 + 时间 */}
+      <div style={{ marginLeft: 'auto', textAlign: 'right', display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* 市场状态 */}
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, textAlign: 'right' }}>
+          <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            市场状态
+          </span>
+          <span style={{
+            fontSize: 13, fontWeight: 600, color: stateColor,
+            textShadow: `0 0 8px ${stateColor}66`,
+            letterSpacing: '0.05em',
+          }}>
+            ● {STATE_LABEL[marketState] ?? marketState}
+          </span>
+        </div>
+        <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+        {/* 时间 */}
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 10, color: '#2a4a6a', letterSpacing: '0.1em' }}>LIVE</div>
+          <div style={{ fontSize: 11, color: '#4fc3f7', fontFamily: "'Courier New', monospace" }}>
+            {new Date().toLocaleTimeString('zh-CN', { hour12: false })}
+          </div>
         </div>
       </div>
     </div>
