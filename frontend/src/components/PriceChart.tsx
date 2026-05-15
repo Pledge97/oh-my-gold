@@ -20,26 +20,38 @@ export function PriceChart() {
     if (!containerRef.current) return
     const chart = createChart(containerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: '#141414' },
+        background: { type: ColorType.Solid, color: '#0a1628' },
         textColor: '#d1d4dc',
       },
       grid: {
-        vertLines: { color: '#2a2a2a' },
-        horzLines: { color: '#2a2a2a' },
+        vertLines: { color: '#0d1a2e' },
+        horzLines: { color: '#0d1a2e' },
       },
-      width: containerRef.current.clientWidth,
-      height: 400,
+      timeScale: { borderColor: '#1a3a5c' },
+      rightPriceScale: { borderColor: '#1a3a5c' },
+      width: containerRef.current.clientWidth || 600,
+      height: 380,
     })
     chartRef.current = chart
     candleRef.current = chart.addCandlestickSeries()
     bbUpperRef.current = chart.addLineSeries({
       color: '#f0a500', lineWidth: 1, lineStyle: LineStyle.Dashed,
     })
-    bbMidRef.current = chart.addLineSeries({ color: '#888', lineWidth: 1 })
+    bbMidRef.current = chart.addLineSeries({ color: '#555', lineWidth: 1 })
     bbLowerRef.current = chart.addLineSeries({
       color: '#f0a500', lineWidth: 1, lineStyle: LineStyle.Dashed,
     })
-    return () => chart.remove()
+
+    const ro = new ResizeObserver(() => {
+      if (containerRef.current) {
+        chart.applyOptions({ width: containerRef.current.clientWidth })
+      }
+    })
+    if (containerRef.current.parentElement) {
+      ro.observe(containerRef.current.parentElement)
+    }
+
+    return () => { chart.remove(); ro.disconnect() }
   }, [])
 
   useEffect(() => {
