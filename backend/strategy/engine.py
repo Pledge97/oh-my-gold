@@ -32,6 +32,7 @@ class StrategyEngine:
         self._portfolio: PortfolioPosition = PortfolioPosition(round_id=0)
         self._v2_last_buy_price: Optional[float] = None  # 上次买入价，用于加仓间距判断
         self._v2_round_counter: int = 0                   # 自增轮次ID
+        self._load_portfolio_v2()  # 从数据库恢复未平仓的V2持仓
 
     def on_tick(self, ctx: MarketContext) -> dict:
         # 1. 更新市场状态
@@ -304,6 +305,43 @@ class StrategyEngine:
                                          pre_amount_g, pre_cost)
             self._v2_last_buy_price = None
         return {"type": signal.exit_reason.value, "amount_g": sold_g, "reason": signal.reason}
+
+    def _load_portfolio_v2(self) -> None:
+        """服务启动时从数据库恢复未平仓的V2持仓状态"""
+        with get_conn() as conn:
+            # 找最新的V2持仓：position_lots 表中有对应 round_id 的 OPEN positions
+            row = conn.execute("""
+                SELECT p.id, p.open_ts FROM positions p
+                WHERE p.status = 'OPEN'
+                  AND EXISTS (SELECT 1 FROM position_lots l WHERE l.round_id = p.id)
+                ORDER BY p.open_ts DESC LIMIT 1
+            """).fetchone()
+            if not row:
+                return
+
+            round_id = row['id']
+            self._v2_round_counter = round_id
+
+            lots = conn.execute("""
+                SELECT lot_index, open_price, amount_g, open_ts
+                FROM position_lots
+                WHERE round_id = ? AND status = 'OPEN'
+                ORDER BY open_ts ASC
+            """, (round_id,)).fetchall()
+
+        if not lots:
+            return
+
+        self._portfolio = PortfolioPosition(round_id=round_id)
+        for lot in lots:
+            self._portfolio.add_lot(
+                lot_index=lot['lot_index'],
+                price=lot['open_price'],
+                amount_g=lot['amount_g'],
+                ts=lot['open_ts'],
+            )
+        # 恢复上次买入价（最后一批的买入价，用于加仓间距判断）
+        self._v2_last_buy_price = lots[-1]['open_price']
 
     def _save_position_open_v2(self, ts: int, open_price: float, amount_g: float) -> None:
         """在 positions 表创建新轮次记录，写入第1批的真实价格和克数"""
