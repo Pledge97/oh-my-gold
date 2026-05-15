@@ -1,10 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button, DatePicker, Form, InputNumber, Modal, Table } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { useStore } from '../store/useStore'
-import { createPosition } from '../api/client'
-import type { Position } from '../types'
+import { createPosition, fetchPositions } from '../api/client'
 
 interface FormValues {
   amount_g: number
@@ -12,11 +10,30 @@ interface FormValues {
   open_date: dayjs.Dayjs
 }
 
+// REST持仓（含手动建仓），独立于WS推送
+interface DbPosition {
+  id: number
+  open_ts: number
+  open_price: number
+  amount_g: number
+  status: string
+  pnl_yuan: number | null
+  pnl_g: number | null
+}
+
 export function PositionTable() {
-  const positions = useStore(s => s.positions)
+  const [positions, setPositions] = useState<DbPosition[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form] = Form.useForm<FormValues>()
+
+  const reload = () => fetchPositions('OPEN').then(setPositions)
+
+  useEffect(() => {
+    reload()
+    const t = setInterval(reload, 5000)
+    return () => clearInterval(t)
+  }, [])
 
   const handleSubmit = async () => {
     const values = await form.validateFields()
@@ -29,12 +46,23 @@ export function PositionTable() {
       })
       form.resetFields()
       setOpen(false)
+      reload()
     } finally {
       setLoading(false)
     }
   }
 
   const columns = [
+    {
+      title: '开仓日期',
+      dataIndex: 'open_ts',
+      key: 'open_ts',
+      render: (v: number) => (
+        <span style={{ color: '#4fc3f7', fontSize: 11 }}>
+          {new Date(v).toLocaleDateString('zh-CN')}
+        </span>
+      ),
+    },
     {
       title: '开仓价',
       dataIndex: 'open_price',
@@ -54,23 +82,11 @@ export function PositionTable() {
       ),
     },
     {
-      title: '盈亏%',
-      dataIndex: 'pnl_pct',
-      key: 'pnl_pct',
-      render: (v: number) => {
-        const color = v >= 0 ? '#00ff88' : '#ff4d4f'
-        return (
-          <span style={{ color, fontFamily: "'Courier New', monospace", fontSize: 12, textShadow: `0 0 6px ${color}44` }}>
-            {v >= 0 ? '+' : ''}{(v * 100).toFixed(2)}%
-          </span>
-        )
-      },
-    },
-    {
       title: '盈亏(元)',
       dataIndex: 'pnl_yuan',
       key: 'pnl_yuan',
-      render: (v: number) => {
+      render: (v: number | null) => {
+        if (v == null) return <span style={{ color: '#2a4a6a', fontSize: 11 }}>—</span>
         const color = v >= 0 ? '#00ff88' : '#ff4d4f'
         return (
           <span style={{ color, fontFamily: "'Courier New', monospace", fontSize: 12, textShadow: `0 0 6px ${color}44` }}>
@@ -86,8 +102,8 @@ export function PositionTable() {
       <div style={{ background: '#0a1628', border: '1px solid #1a3a5c', borderRadius: 4, overflow: 'hidden' }}>
         <div className="panel-title" style={{ display: 'flex', alignItems: 'center' }}>
           当前持仓
-          <span style={{ marginLeft: 8, fontSize: 10, color: (positions ?? []).length > 0 ? '#00ff88' : '#2a4a6a' }}>
-            {(positions ?? []).length} 笔
+          <span style={{ marginLeft: 8, fontSize: 10, color: positions.length > 0 ? '#00ff88' : '#2a4a6a' }}>
+            {positions.length} 笔
           </span>
           <Button
             size="small"
@@ -106,8 +122,8 @@ export function PositionTable() {
             手动建仓
           </Button>
         </div>
-        <Table<Position>
-          dataSource={positions ?? []}
+        <Table<DbPosition>
+          dataSource={positions}
           columns={columns}
           rowKey="id"
           size="small"
