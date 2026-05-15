@@ -1,4 +1,4 @@
-import { Table } from 'antd'
+import { Table, Tooltip } from 'antd'
 import { useStore } from '../store/useStore'
 import type { Signal } from '../types'
 
@@ -71,7 +71,9 @@ export function SignalPanel() {
       key: 'reason',
       ellipsis: true,
       render: (v: string) => (
-        <span style={{ color: '#6a8aaa', fontSize: 11 }}>{v}</span>
+        <Tooltip title={v} color="#0a1628" styles={{ body: { color: '#c8d8e8', fontSize: 12, border: '1px solid #1a3a5c' } }}>
+          <span style={{ color: '#6a8aaa', fontSize: 11, cursor: 'default' }}>{v}</span>
+        </Tooltip>
       ),
     },
   ]
