@@ -38,6 +38,7 @@ def _update_context(price: float) -> None:
     daily_df = _load_daily_df()
 
     ctx.price = price
+    ctx.ts = int(time.time() * 1000)
     ctx.prev_price = ctx.price
     ctx.ready = False
 

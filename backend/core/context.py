@@ -28,6 +28,7 @@ class MarketContext:
     price: float = 0.0
     prev_price: float = 0.0
     price_5m_ago: float = 0.0
+    ts: int = 0
     market_state: MarketState = MarketState.OSCILLATION
     indicators: IndicatorSnapshot = field(default_factory=IndicatorSnapshot)
     kline_5m: Optional[pd.DataFrame] = None
