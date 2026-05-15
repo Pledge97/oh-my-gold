@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button, DatePicker, Form, InputNumber, Modal, Table } from 'antd'
-import { PlusOutlined, CloseCircleOutlined } from '@ant-design/icons'
+import { PlusOutlined, DollarOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useStore, DbPosition } from '../store/useStore'
 import { createPosition, closePosition, fetchPositions } from '../api/client'
@@ -141,7 +141,7 @@ export function PositionTable() {
         <Button
           type="text"
           size="small"
-          icon={<CloseCircleOutlined />}
+          icon={<DollarOutlined />}
           onClick={() => openSell(row)}
           style={{ color: '#ff4d4f', padding: 0 }}
           title="卖出"
