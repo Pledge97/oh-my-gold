@@ -70,3 +70,107 @@ class PositionManager:
             ).fetchall()
         return [Position(id=r["id"], open_ts=r["open_ts"], open_price=r["open_price"],
                          amount_g=r["amount_g"], add_count=r["add_count"]) for r in rows]
+
+
+# ── V2 组合仓位管理 ────────────────────────────────────────
+
+from typing import List, Optional
+from backend.core.enums import LotStatus
+
+
+@dataclass
+class Lot:
+    """单批次买入明细"""
+    lot_index: int                      # 批次序号：1/2/3
+    open_price: float                   # 买入价格（元/g）
+    amount_g: float                     # 买入克数
+    open_ts: int                        # 买入时间（毫秒时间戳）
+    status: LotStatus = LotStatus.OPEN
+    close_ts: Optional[int] = None
+    close_price: Optional[float] = None
+    close_reason: Optional[str] = None
+
+
+class PortfolioPosition:
+    """
+    T仓组合持仓管理（V2）。
+    一轮交易 = 从第一笔买入到全部平仓。
+    所有止盈/止损以组合整体盈亏率为基准，不对单笔单独止损。
+    """
+
+    def __init__(self, round_id: int):
+        self.round_id = round_id        # 关联 positions.id
+        self.lots: List[Lot] = []
+        self.tp1_done: bool = False     # 第1次止盈是否已执行
+        self.tp2_done: bool = False     # 第2次止盈是否已执行
+        self._total_amount_g: float = 0.0
+        self._total_cost: float = 0.0   # 总成本 = Σ(买入价 × 买入量)
+
+    @property
+    def total_amount_g(self) -> float:
+        return self._total_amount_g
+
+    @property
+    def total_cost(self) -> float:
+        return self._total_cost
+
+    @property
+    def avg_cost(self) -> float:
+        """加权平均成本价（元/g）"""
+        if self._total_amount_g == 0:
+            return 0.0
+        return self._total_cost / self._total_amount_g
+
+    def is_empty(self) -> bool:
+        return self._total_amount_g == 0.0
+
+    def pnl_pct(self, current_price: float) -> float:
+        """T仓整体浮盈浮亏率 = (当前市值 - 总成本) / 总成本"""
+        if self._total_cost == 0:
+            return 0.0
+        return (current_price * self._total_amount_g - self._total_cost) / self._total_cost
+
+    def add_lot(self, lot_index: int, price: float, amount_g: float, ts: int) -> Lot:
+        """买入一批，返回 Lot 对象（调用方负责写库）"""
+        lot = Lot(lot_index=lot_index, open_price=price, amount_g=amount_g, open_ts=ts)
+        self.lots.append(lot)
+        self._total_amount_g += amount_g
+        self._total_cost += price * amount_g
+        return lot
+
+    @property
+    def lot_count(self) -> int:
+        """当前未平仓批次数"""
+        return sum(1 for lot in self.lots if lot.status == LotStatus.OPEN)
+
+    def reduce(self, ratio: float, close_price: float, ts: int) -> float:
+        """
+        按比例减仓，返回实际卖出克数。
+        按平均成本比例减少总成本，不对单笔单独计算。
+        """
+        sold_g = self._total_amount_g * ratio
+        self._total_cost -= self._total_cost * ratio
+        self._total_amount_g -= sold_g
+        self._total_amount_g = round(self._total_amount_g, 4)
+        self._total_cost = round(self._total_cost, 4)
+        return sold_g
+
+    def clear(self, close_price: float, ts: int) -> float:
+        """全部清仓，返回实际卖出克数"""
+        sold_g = self._total_amount_g
+        self._total_amount_g = 0.0
+        self._total_cost = 0.0
+        for lot in self.lots:
+            if lot.status == LotStatus.OPEN:
+                lot.status = LotStatus.CLOSED
+                lot.close_ts = ts
+                lot.close_price = close_price
+        return sold_g
+
+    def mark_tp1(self):
+        """标记第1次止盈已执行"""
+        self.tp1_done = True
+
+    def mark_tp2(self):
+        """标记第2次止盈已执行"""
+        self.tp2_done = True
