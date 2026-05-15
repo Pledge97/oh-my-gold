@@ -245,7 +245,7 @@ class StrategyEngine:
         if self._portfolio.is_empty():
             self._v2_round_counter += 1
             self._portfolio = PortfolioPosition(round_id=self._v2_round_counter)
-            self._save_position_open_v2(ts)
+            self._save_position_open_v2(ts, ctx.price, signal.amount_g)
 
         lot = self._portfolio.add_lot(
             lot_index=self._portfolio.lot_count,
@@ -255,6 +255,9 @@ class StrategyEngine:
         )
         self._v2_last_buy_price = ctx.price
         self._save_lot_v2(lot)
+        # 加仓后同步更新 positions 表总持仓量（初始建仓时已在 INSERT 中写入，无需重复）
+        if self._portfolio.lot_count > 1:
+            self._update_position_amount_v2()
         self._save_signal(ctx, signal.signal_type.value, signal.amount_g, signal.reason)
         return {"type": signal.signal_type.value, "amount_g": signal.amount_g,
                 "reason": signal.reason}
@@ -302,14 +305,22 @@ class StrategyEngine:
             self._v2_last_buy_price = None
         return {"type": signal.exit_reason.value, "amount_g": sold_g, "reason": signal.reason}
 
-    def _save_position_open_v2(self, ts: int) -> None:
-        """在 positions 表创建新轮次记录（V2：实际批次数据在 position_lots 表）"""
+    def _save_position_open_v2(self, ts: int, open_price: float, amount_g: float) -> None:
+        """在 positions 表创建新轮次记录，写入第1批的真实价格和克数"""
         with get_conn() as conn:
             cur = conn.execute(
-                "INSERT INTO positions (open_ts, open_price, amount_g, status) VALUES (?, 0, 0, 'OPEN')",
-                (ts,),
+                "INSERT INTO positions (open_ts, open_price, amount_g, status) VALUES (?, ?, ?, 'OPEN')",
+                (ts, open_price, amount_g),
             )
             self._portfolio.round_id = cur.lastrowid
+
+    def _update_position_amount_v2(self) -> None:
+        """加仓后同步更新 positions 表的总持仓量"""
+        with get_conn() as conn:
+            conn.execute(
+                "UPDATE positions SET amount_g=? WHERE id=?",
+                (self._portfolio.total_amount_g, self._portfolio.round_id),
+            )
 
     def _save_lot_v2(self, lot) -> None:
         """在 position_lots 表记录批次买入"""
