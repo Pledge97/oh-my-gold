@@ -83,7 +83,20 @@ class StrategyEngine:
                 "active": self.cb.is_active,
                 "level": self.cb.state.level if self.cb.is_active else None,
             },
-            "open_positions": len(self._open_positions),
+            "positions": [
+                {
+                    "id": pos.id,
+                    "open_price": pos.open_price,
+                    "amount_g": pos.amount_g,
+                    "pnl_pct": round((ctx.price - pos.open_price) / pos.open_price, 6),
+                    "pnl_yuan": round(
+                        (ctx.price - pos.open_price) * pos.amount_g
+                        - ctx.price * pos.amount_g * 0.004,
+                        2,
+                    ),
+                }
+                for pos in self._open_positions
+            ],
         }
 
     def _save_signal(self, ctx: MarketContext, sig_type: str,

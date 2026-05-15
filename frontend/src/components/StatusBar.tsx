@@ -10,7 +10,7 @@ const STATE_COLOR: Record<string, string> = {
 
 export function StatusBar() {
   const { price, marketState, cbActive, cbLevel, positions } = useStore()
-  const totalPnl = positions.reduce((s, p) => s + p.pnl_yuan, 0)
+  const totalPnl = (positions ?? []).reduce((s, p) => s + p.pnl_yuan, 0)
   return (
     <Space style={{ padding: '8px 16px', background: '#141414', width: '100%' }}>
       <Typography.Text style={{ fontSize: 20, color: '#fff' }}>
