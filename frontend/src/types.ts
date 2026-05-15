@@ -17,6 +17,28 @@ export interface Position {
   pnl_yuan: number
 }
 
+/** 单批次持仓明细 */
+export interface Lot {
+  lot_index: number
+  open_price: number
+  amount_g: number
+  open_ts: number
+  status: 'OPEN' | 'CLOSED'
+}
+
+/** T仓组合持仓（V2） */
+export interface PortfolioPosition {
+  round_id: number
+  total_amount_g: number
+  total_cost: number
+  avg_cost: number
+  pnl_pct: number
+  pnl_yuan: number
+  tp1_done: boolean
+  tp2_done: boolean
+  lots: Lot[]
+}
+
 export interface WsMessage {
   ts: number
   price: number
@@ -24,7 +46,8 @@ export interface WsMessage {
   indicators: Indicators
   signal: { type: string; amount_g: number; reason: string } | null
   circuit_breaker: { active: boolean; level: number | null }
-  positions: Position[]
+  /** V2 组合持仓，替换原 V1 的 positions 字段 */
+  portfolio: PortfolioPosition
 }
 
 export interface Signal {
