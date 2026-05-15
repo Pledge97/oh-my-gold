@@ -5,3 +5,4 @@ __pycache__/
 *.db
 .env
 frontend/node_modules/
+.claude/
