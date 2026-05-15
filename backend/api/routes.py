@@ -98,6 +98,34 @@ def get_daily_prices(days: int = 30):
     return list(reversed([dict(r) for r in rows]))
 
 
+class ClosePositionIn(BaseModel):
+    close_price: float
+    close_date: str  # YYYY-MM-DD HH:MM
+
+
+@router.post("/positions/{pos_id}/close")
+def close_position(pos_id: int, body: ClosePositionIn):
+    dt = datetime.strptime(body.close_date, "%Y-%m-%d %H:%M")
+    close_ts = int(dt.timestamp() * 1000)
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT open_price, amount_g FROM positions WHERE id=? AND status='OPEN'",
+            (pos_id,)
+        ).fetchone()
+        if not row:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="持仓不存在或已平仓")
+        fee = body.close_price * row["amount_g"] * 0.004
+        pnl_yuan = (body.close_price - row["open_price"]) * row["amount_g"] - fee
+        pnl_g = pnl_yuan / body.close_price
+        conn.execute(
+            """UPDATE positions SET status='CLOSED', close_ts=?, close_price=?,
+               close_type='MANUAL', pnl_yuan=?, pnl_g=? WHERE id=?""",
+            (close_ts, body.close_price, round(pnl_yuan, 2), round(pnl_g, 6), pos_id)
+        )
+    return {"id": pos_id, "pnl_yuan": round(pnl_yuan, 2), "status": "CLOSED"}
+
+
 @router.get("/circuit-breaker")
 def get_cb_status():
     with get_conn() as conn:

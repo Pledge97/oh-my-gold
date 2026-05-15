@@ -24,3 +24,10 @@ export const createPosition = (body: { amount_g: number; open_price: number; ope
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   }).then(r => r.json())
+
+export const closePosition = (posId: number, body: { close_price: number; close_date: string }) =>
+  fetch(`${BASE}/positions/${posId}/close`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(r => r.json())
