@@ -86,6 +86,10 @@ def get_tick_prices(hours: int = 24):
                 "SELECT ts, price FROM prices ORDER BY ts ASC"
             ).fetchall()
     return [{"ts": r["ts"], "price": r["price"]} for r in rows]
+
+
+@router.get("/prices/daily")
+def get_daily_prices(days: int = 30):
     with get_conn() as conn:
         rows = conn.execute(
             "SELECT date, open, high, low, close FROM daily_prices "
