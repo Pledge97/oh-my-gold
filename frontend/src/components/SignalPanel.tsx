@@ -16,6 +16,14 @@ const TYPE_LABEL: Record<string, string> = {
 
 export function SignalPanel() {
   const signals = useStore(s => s.signals)
+  const indicators = useStore(s => s.indicators)
+  const dbPositions = useStore(s => s.dbPositions)
+
+  // 预计止损：取第一笔持仓的开仓价 - 2×ATR
+  const firstPos = dbPositions[0]
+  const stopPrice = firstPos && indicators?.atr
+    ? firstPos.open_price - 2 * indicators.atr
+    : null
   const columns = [
     {
       title: '时间',
@@ -88,7 +96,35 @@ export function SignalPanel() {
       flexDirection: 'column',
       minHeight: 0,
     }}>
-      <div className="panel-title">信号记录</div>
+      <div className="panel-title" style={{ flexWrap: 'wrap', gap: 8 }}>
+        信号记录
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 10, fontSize: 10 }}>
+          {indicators?.bb_lower ? (
+            <span>
+              <span style={{ color: '#4a6a8a' }}>买入 </span>
+              <span style={{ color: '#ff4d4f', fontFamily: "'Courier New', monospace" }}>
+                {indicators.bb_lower.toFixed(2)}
+              </span>
+            </span>
+          ) : null}
+          {indicators?.bb_upper ? (
+            <span>
+              <span style={{ color: '#4a6a8a' }}>止盈 </span>
+              <span style={{ color: '#00d4ff', fontFamily: "'Courier New', monospace" }}>
+                {indicators.bb_upper.toFixed(2)}
+              </span>
+            </span>
+          ) : null}
+          {stopPrice ? (
+            <span>
+              <span style={{ color: '#4a6a8a' }}>止损 </span>
+              <span style={{ color: '#00ff88', fontFamily: "'Courier New', monospace" }}>
+                {stopPrice.toFixed(2)}
+              </span>
+            </span>
+          ) : null}
+        </span>
+      </div>
       <div style={{ flex: 1, overflow: 'auto' }}>
       <Table<Signal>
         dataSource={signals}
