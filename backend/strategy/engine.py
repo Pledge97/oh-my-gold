@@ -10,6 +10,7 @@ from backend.signals.sell_signal import check_sell, check_sell_signal
 from backend.signals.exit_signal import check_exit, check_exit_signal
 from backend.db.database import get_conn
 from typing import Optional
+import config
 import time
 
 
@@ -178,8 +179,9 @@ class StrategyEngine:
             if sell_sig:
                 signal_out = self._execute_sell_v2(sell_sig, ctx)
 
-        # 6. 建仓/加仓检查（熔断中跳过）
-        if not self.cb.is_active and ctx.ready:
+        # 6. 建仓/加仓检查（熔断中跳过；本 tick 已触发清仓时跳过）
+        already_cleared = signal_out is not None and self._portfolio.is_empty()
+        if not self.cb.is_active and ctx.ready and not already_cleared:
             buy_sig = check_buy_signal(
                 ctx, self._portfolio,
                 circuit_breaker_active=self.cb.is_active,
@@ -260,6 +262,10 @@ class StrategyEngine:
     def _execute_sell_v2(self, signal, ctx: MarketContext) -> dict:
         """执行止盈减仓/清仓"""
         ts = ctx.ts or int(time.time() * 1000)
+        # 在 clear/reduce 之前捕获持仓数据用于 PnL 计算
+        pre_amount_g = self._portfolio.total_amount_g
+        pre_cost = self._portfolio.total_cost
+
         if signal.sell_ratio >= 1.0:
             sold_g = self._portfolio.clear(ctx.price, ts)
         else:
@@ -272,13 +278,18 @@ class StrategyEngine:
 
         self._save_signal(ctx, signal.exit_reason.value, sold_g, signal.reason)
         if self._portfolio.is_empty():
-            self._save_position_close_v2(ctx.price, ts, signal.exit_reason.value)
+            self._save_position_close_v2(ctx.price, ts, signal.exit_reason.value,
+                                         pre_amount_g, pre_cost)
             self._v2_last_buy_price = None
         return {"type": signal.exit_reason.value, "amount_g": sold_g, "reason": signal.reason}
 
     def _execute_exit_v2(self, signal, ctx: MarketContext) -> dict:
         """执行止损减仓/清仓"""
         ts = ctx.ts or int(time.time() * 1000)
+        # 在 clear/reduce 之前捕获持仓数据用于 PnL 计算
+        pre_amount_g = self._portfolio.total_amount_g
+        pre_cost = self._portfolio.total_cost
+
         if signal.sell_ratio >= 1.0:
             sold_g = self._portfolio.clear(ctx.price, ts)
         else:
@@ -286,15 +297,16 @@ class StrategyEngine:
 
         self._save_signal(ctx, signal.exit_reason.value, sold_g, signal.reason)
         if self._portfolio.is_empty():
-            self._save_position_close_v2(ctx.price, ts, signal.exit_reason.value)
+            self._save_position_close_v2(ctx.price, ts, signal.exit_reason.value,
+                                         pre_amount_g, pre_cost)
             self._v2_last_buy_price = None
         return {"type": signal.exit_reason.value, "amount_g": sold_g, "reason": signal.reason}
 
     def _save_position_open_v2(self, ts: int) -> None:
-        """在 positions 表创建新轮次记录"""
+        """在 positions 表创建新轮次记录（V2：实际批次数据在 position_lots 表）"""
         with get_conn() as conn:
             cur = conn.execute(
-                "INSERT INTO positions (open_ts, status) VALUES (?, 'OPEN')",
+                "INSERT INTO positions (open_ts, open_price, amount_g, status) VALUES (?, 0, 0, 'OPEN')",
                 (ts,),
             )
             self._portfolio.round_id = cur.lastrowid
@@ -310,15 +322,16 @@ class StrategyEngine:
                  lot.open_ts, lot.open_price, lot.amount_g),
             )
 
-    def _save_position_close_v2(self, price: float, ts: int, reason: str) -> None:
-        """更新 positions 表关闭本轮记录"""
-        fee = price * self._portfolio.total_amount_g * 0.004
-        pnl_yuan = price * self._portfolio.total_amount_g - self._portfolio.total_cost - fee
+    def _save_position_close_v2(self, price: float, ts: int, reason: str,
+                                 total_amount_g: float, total_cost: float) -> None:
+        """更新 positions 表关闭本轮记录（接收预计算的持仓量和成本）"""
+        fee = price * total_amount_g * config.SELL_FEE_RATE
+        pnl_yuan = price * total_amount_g - total_cost - fee
         pnl_g = pnl_yuan / price if price > 0 else 0.0
         with get_conn() as conn:
             conn.execute(
                 """UPDATE positions SET status='CLOSED', close_ts=?, pnl_yuan=?,
-                   pnl_g=?, close_reason=? WHERE id=?""",
+                   pnl_g=?, close_type=? WHERE id=?""",
                 (ts, round(pnl_yuan, 2), round(pnl_g, 4),
                  reason, self._portfolio.round_id),
             )
