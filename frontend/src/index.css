@@ -1,0 +1,139 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #060b14;
+  font-family: 'Courier New', 'SF Mono', monospace;
+}
+
+/* Ant Design 表格暗色覆盖 */
+.ant-table {
+  background: transparent !important;
+}
+.ant-table-thead > tr > th {
+  background: #0d1a2e !important;
+  color: #4fc3f7 !important;
+  border-bottom: 1px solid #1a3a5c !important;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+.ant-table-tbody > tr > td {
+  background: transparent !important;
+  border-bottom: 1px solid #0d1a2e !important;
+  color: #c8d8e8 !important;
+  font-size: 12px;
+}
+.ant-table-tbody > tr:hover > td {
+  background: #0d1a2e !important;
+}
+.ant-table-wrapper {
+  background: transparent !important;
+}
+.ant-spin-container {
+  background: transparent !important;
+}
+.ant-pagination {
+  color: #4fc3f7 !important;
+}
+.ant-pagination-item a {
+  color: #4fc3f7 !important;
+}
+.ant-pagination-item-active {
+  border-color: #00d4ff !important;
+  background: #0d1a2e !important;
+}
+.ant-empty-description {
+  color: #2a4a6a !important;
+}
+.ant-empty-img-simple-path {
+  fill: #0d1a2e !important;
+}
+.ant-empty-img-simple-ellipse {
+  fill: #0d1a2e !important;
+}
+
+/* 卡片 */
+.ant-card {
+  background: #0a1628 !important;
+  border: 1px solid #1a3a5c !important;
+}
+.ant-card-body {
+  padding: 12px 16px !important;
+}
+.ant-statistic-title {
+  color: #4fc3f7 !important;
+  font-size: 11px !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ant-statistic-content {
+  color: #e0e6f0 !important;
+  font-family: 'Courier New', monospace !important;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #060b14;
+}
+::-webkit-scrollbar-thumb {
+  background: #1a3a5c;
+  border-radius: 2px;
+}
+
+/* 扫描线动画 */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.dashboard-scanline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(transparent, rgba(0, 212, 255, 0.08), transparent);
+  animation: scanline 8s linear infinite;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* 面板标题 */
+.panel-title {
+  color: #4fc3f7;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-bottom: 1px solid #1a3a5c;
+  background: #0d1a2e;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-title::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #00d4ff;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #00d4ff;
+}
+
+/* 数字闪烁 */
+@keyframes numPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+.price-value {
+  animation: numPulse 2s ease-in-out infinite;
+}

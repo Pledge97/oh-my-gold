@@ -1,11 +1,17 @@
-import { Table, Tag } from 'antd'
+import { Table } from 'antd'
 import { useStore } from '../store/useStore'
 import type { Signal } from '../types'
 
 const TYPE_COLOR: Record<string, string> = {
-  BUY: 'green',
-  TAKE_PROFIT: 'blue',
-  STOP_LOSS: 'red',
+  BUY: '#00ff88',
+  TAKE_PROFIT: '#00d4ff',
+  STOP_LOSS: '#ff4d4f',
+}
+
+const TYPE_LABEL: Record<string, string> = {
+  BUY: '买入',
+  TAKE_PROFIT: '止盈',
+  STOP_LOSS: '止损',
 }
 
 export function SignalPanel() {
@@ -15,30 +21,76 @@ export function SignalPanel() {
       title: '时间',
       dataIndex: 'ts',
       key: 'ts',
-      render: (v: number) => new Date(v).toLocaleTimeString(),
+      width: 80,
+      render: (v: number) => (
+        <span style={{ color: '#4fc3f7', fontSize: 11 }}>
+          {new Date(v).toLocaleTimeString('zh-CN', { hour12: false })}
+        </span>
+      ),
     },
     {
       title: '类型',
       dataIndex: 'type',
       key: 'type',
-      render: (v: string) => <Tag color={TYPE_COLOR[v] ?? 'default'}>{v}</Tag>,
+      width: 70,
+      render: (v: string) => {
+        const color = TYPE_COLOR[v] ?? '#888'
+        return (
+          <span style={{
+            color, fontSize: 11, fontWeight: 700,
+            textShadow: `0 0 6px ${color}66`,
+          }}>
+            {TYPE_LABEL[v] ?? v}
+          </span>
+        )
+      },
     },
     {
       title: '价格',
       dataIndex: 'price',
       key: 'price',
-      render: (v: number) => v.toFixed(2),
+      width: 75,
+      render: (v: number) => (
+        <span style={{ color: '#f0d060', fontFamily: "'Courier New', monospace", fontSize: 12 }}>
+          {v.toFixed(2)}
+        </span>
+      ),
     },
-    { title: '克数', dataIndex: 'amount_g', key: 'amount_g' },
-    { title: '原因', dataIndex: 'reason', key: 'reason', ellipsis: true },
+    {
+      title: '克数',
+      dataIndex: 'amount_g',
+      key: 'amount_g',
+      width: 55,
+      render: (v: number) => (
+        <span style={{ color: '#c8d8e8', fontSize: 11 }}>{v}g</span>
+      ),
+    },
+    {
+      title: '原因',
+      dataIndex: 'reason',
+      key: 'reason',
+      ellipsis: true,
+      render: (v: string) => (
+        <span style={{ color: '#6a8aaa', fontSize: 11 }}>{v}</span>
+      ),
+    },
   ]
   return (
-    <Table<Signal>
-      dataSource={signals}
-      columns={columns}
-      rowKey="id"
-      size="small"
-      pagination={{ pageSize: 10 }}
-    />
+    <div style={{
+      background: '#0a1628',
+      border: '1px solid #1a3a5c',
+      borderRadius: 4,
+      overflow: 'hidden',
+    }}>
+      <div className="panel-title">信号记录</div>
+      <Table<Signal>
+        dataSource={signals}
+        columns={columns}
+        rowKey="id"
+        size="small"
+        pagination={{ pageSize: 8, size: 'small' }}
+        style={{ background: 'transparent' }}
+      />
+    </div>
   )
 }
