@@ -11,6 +11,7 @@ interface Store {
   signals: Signal[]
   performance: Performance | null
   dailyPrices: DailyPrice[]
+  lastSignalTs: number  // 最近一次有交易信号的时间戳，变化时触发持仓刷新
   setWsMessage: (msg: WsMessage) => void
   setSignals: (s: Signal[]) => void
   setPerformance: (p: Performance) => void
@@ -27,14 +28,16 @@ export const useStore = create<Store>((set) => ({
   signals: [],
   performance: null,
   dailyPrices: [],
-  setWsMessage: (msg) => set({
+  lastSignalTs: 0,
+  setWsMessage: (msg) => set((state) => ({
     price: msg.price,
     marketState: msg.market_state,
     indicators: msg.indicators,
     positions: msg.positions,
     cbActive: msg.circuit_breaker.active,
     cbLevel: msg.circuit_breaker.level,
-  }),
+    lastSignalTs: msg.signal ? msg.ts : state.lastSignalTs,
+  })),
   setSignals: (signals) => set({ signals }),
   setPerformance: (performance) => set({ performance }),
   setDailyPrices: (dailyPrices) => set({ dailyPrices }),

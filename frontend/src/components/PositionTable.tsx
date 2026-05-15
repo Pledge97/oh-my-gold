@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button, DatePicker, Form, InputNumber, Modal, Table } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import { useStore } from '../store/useStore'
 import { createPosition, fetchPositions } from '../api/client'
 
 interface FormValues {
@@ -26,14 +27,17 @@ export function PositionTable() {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form] = Form.useForm<FormValues>()
+  const lastSignalTs = useStore(s => s.lastSignalTs)
 
   const reload = () => fetchPositions('OPEN').then(setPositions)
 
+  // 初始加载
+  useEffect(() => { reload() }, [])
+
+  // 有新交易信号时刷新
   useEffect(() => {
-    reload()
-    const t = setInterval(reload, 5000)
-    return () => clearInterval(t)
-  }, [])
+    if (lastSignalTs > 0) reload()
+  }, [lastSignalTs])
 
   const handleSubmit = async () => {
     const values = await form.validateFields()
