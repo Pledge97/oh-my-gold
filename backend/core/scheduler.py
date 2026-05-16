@@ -16,12 +16,18 @@ from backend.core.market_hours import is_trading_time
 from backend import config
 
 
-def _load_ticks(limit: int) -> list[dict]:
+# 4H EMA60 需要60根4小时K线 = 10天，取15天留余量
+_TICK_LOOKBACK_DAYS = 15
+
+
+def _load_ticks() -> list[dict]:
+    since_ms = int((time.time() - _TICK_LOOKBACK_DAYS * 86400) * 1000)
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT ts, price FROM prices ORDER BY ts DESC LIMIT ?", (limit,)
+            "SELECT ts, price FROM prices WHERE ts >= ? ORDER BY ts ASC",
+            (since_ms,),
         ).fetchall()
-    return [{"ts": r["ts"], "price": r["price"]} for r in reversed(rows)]
+    return [{"ts": r["ts"], "price": r["price"]} for r in rows]
 
 
 def _load_daily_df() -> pd.DataFrame:
@@ -33,7 +39,7 @@ def _load_daily_df() -> pd.DataFrame:
 
 
 def _update_context(price: float) -> None:
-    ticks = _load_ticks(100_000)
+    ticks = _load_ticks()
     kline_5m = build_kline(ticks, period_sec=300)
     kline_4h = build_kline(ticks, period_sec=14400)
     daily_df = _load_daily_df()
