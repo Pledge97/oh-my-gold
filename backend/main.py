@@ -9,7 +9,7 @@ from backend.data.fetch_history import fetch_and_store
 from backend.strategy.engine import StrategyEngine
 from backend.api.routes import router
 from backend.api.websocket import ws_endpoint, broadcast
-from backend.core.scheduler import tick_job
+from backend.core.scheduler import tick_job, _init_tick_cache
 from backend import config
 
 engine = StrategyEngine()
@@ -20,6 +20,7 @@ scheduler = AsyncIOScheduler()
 async def lifespan(app: FastAPI):
     init_db()
     fetch_and_store()
+    _init_tick_cache()  # 从数据库加载历史 tick 到内存缓存
     scheduler.add_job(
         tick_job,
         "interval",
