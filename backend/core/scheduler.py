@@ -61,8 +61,11 @@ def _init_tick_cache() -> None:
 
     # 用历史 tick 全量构建一次5分钟K线，初始化增量 builder
     ticks = list(_tick_cache)
+    print(f"[kline] 开始计算5分钟K线（{len(ticks)} 条 tick）")
+    t0 = time.time()
     history_5m = build_kline(ticks, period_sec=300)
     _kline_5m_builder = KlineBuilder(period_sec=300, history=history_5m)
+    print(f"[kline] 5分钟K线计算完成，{len(history_5m)} 根，耗时 {time.time()-t0:.3f}s")
 
     # 立即初始化慢速指标，不等第一个 tick 到来
     _refresh_slow_indicators(time.time())
@@ -94,6 +97,8 @@ def _refresh_slow_indicators(now: float) -> None:
 
     # 4H K线：每小时重建
     if now - _last_4h_refresh >= _4H_REFRESH_SEC:
+        print(f"[kline] 开始计算4小时K线（{len(ticks)} 条 tick）")
+        t0 = time.time()
         _kline_4h_cache = build_kline(ticks, period_sec=14400)
         if not _kline_4h_cache.empty and len(_kline_4h_cache) >= config.EMA_LONG:
             _ema_4h_20_cache = float(calc_ema(_kline_4h_cache, config.EMA_SHORT).iloc[-1])
@@ -101,12 +106,15 @@ def _refresh_slow_indicators(now: float) -> None:
         else:
             _ema_4h_20_cache = _ema_4h_60_cache = 0.0
         _last_4h_refresh = now
+        print(f"[kline] 4小时K线计算完成，{len(_kline_4h_cache)} 根，耗时 {time.time()-t0:.3f}s")
 
     # 日线ADX：每天 00:01 后首次 tick 时刷新
     today = date.today()
     t = time.localtime()
     past_midnight = t.tm_hour > 0 or t.tm_min >= 1
     if today != _last_daily_refresh_date and past_midnight:
+        print(f"[kline] 开始计算日线指标（{len(_daily_df_cache)} 根日K）")
+        t0 = time.time()
         _daily_df_cache = _load_daily_df()
         min_daily = config.ADX_PERIOD + config.ADX_LOOKBACK + 1
         if len(_daily_df_cache) >= min_daily:
@@ -114,6 +122,7 @@ def _refresh_slow_indicators(now: float) -> None:
         if len(_daily_df_cache) >= config.ATR_PERIOD * 2:
             _atr_daily_mean_cache = calc_atr(_daily_df_cache, config.ATR_PERIOD)
         _last_daily_refresh_date = today
+        print(f"[kline] 日线指标计算完成，{len(_daily_df_cache)} 根，耗时 {time.time()-t0:.3f}s")
 
 
 def _update_context(price: float, ts: int) -> None:
@@ -141,10 +150,12 @@ def _update_context(price: float, ts: int) -> None:
             and not kline_5m.empty
             and len(kline_5m) >= min_5m):
 
+        t0 = time.time()
         bb = calc_bollinger(kline_5m, config.BB_PERIOD, config.BB_STD)
         rsi = calc_rsi(kline_5m, config.RSI_PERIOD)
         atr_5m = calc_atr(kline_5m, config.ATR_PERIOD)
         ema_5m_20 = float(calc_ema(kline_5m, config.EMA_SHORT).iloc[-1])
+        print(f"[kline] 5分钟指标计算耗时 {time.time()-t0:.3f}s（{len(kline_5m)} 根K线）")
 
         ctx.indicators = IndicatorSnapshot(
             adx=_adx_cache["adx"],
@@ -178,7 +189,7 @@ async def tick_job(engine, broadcast_fn) -> None:
         await broadcast_fn({"is_market_open": False})
         return
 
-    price = fetch_tick()
+    price = await fetch_tick()
     if price is None:
         return
 

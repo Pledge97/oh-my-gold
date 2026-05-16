@@ -4,14 +4,14 @@ import httpx
 from backend import config
 
 
-def run_once() -> float | None:
-    """拉取 jdjygold 最新价格，返回 float 或 None（失败时）。"""
+async def run_once() -> float | None:
+    """异步拉取 jdjygold 最新价格，不阻塞事件循环。"""
     try:
-        resp = httpx.get(
-            config.JDJYGOLD_URL,
-            params={"productSku": config.JDJYGOLD_SKU},
-            timeout=5,
-        )
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(
+                config.JDJYGOLD_URL,
+                params={"productSku": config.JDJYGOLD_SKU},
+            )
         data = resp.json()
         if data.get("success"):
             return float(data["resultData"]["datas"]["price"])

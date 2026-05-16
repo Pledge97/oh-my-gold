@@ -1,7 +1,8 @@
 # backend/main.py
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, Request, WebSocket
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from backend.db.database import init_db
@@ -34,6 +35,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.middleware("http")
+async def log_request_time(request: Request, call_next):
+    t0 = time.time()
+    response = await call_next(request)
+    elapsed = time.time() - t0
+    print(f"[api] {request.method} {request.url.path}?{request.url.query} 耗时 {elapsed:.3f}s")
+    return response
+
+
 app.include_router(router)
 
 
