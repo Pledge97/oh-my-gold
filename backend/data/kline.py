@@ -25,7 +25,8 @@ def build_kline(ticks: list[dict], period_sec: int) -> pd.DataFrame:
 
     ohlc["volume"] = vol.reindex(ohlc.index).fillna(0)
     ohlc = ohlc.reset_index()
-    ohlc["ts"] = (ohlc["dt"].astype("int64") // 10**6).astype(int)
+    # dt 是 UTC Timestamp，astype("int64") 在 Series 上返回毫秒，直接用
+    ohlc["ts"] = ohlc["dt"].astype("int64")
     return ohlc[_COLS].reset_index(drop=True)
 
 
@@ -62,38 +63,36 @@ class KlineBuilder:
                     close=float(row["close"]),
                     volume=int(row["volume"]),
                 ))
-            # 最后一根可能是未完成的，移出作为 current
-            if self._finished:
-                self._current = self._finished.pop()
 
     def _window_ts(self, ts_ms: int) -> int:
-        """计算 ts_ms 所属窗口的起始时间（秒，与 build_kline 对齐）"""
-        period_sec = self._period_ms // 1000
-        ts_sec = ts_ms // 1000
-        return (ts_sec // period_sec) * period_sec
+        """计算 ts_ms 所属窗口的起始时间（毫秒，与 build_kline 对齐）"""
+        return (ts_ms // self._period_ms) * self._period_ms
 
     def _fill_gaps(self, from_ts: int, to_ts: int) -> None:
-        """在两个窗口之间补充 flat bar（ts 单位：秒）"""
+        """在两个窗口之间补充 flat bar（ts 单位：毫秒）"""
         if not self._finished:
             return
         prev_close = self._finished[-1].close
-        period_sec = self._period_ms // 1000
-        cur = from_ts + period_sec
+        cur = from_ts + self._period_ms
         while cur < to_ts:
             self._finished.append(_Bar(
                 ts=cur, open=prev_close, high=prev_close,
                 low=prev_close, close=prev_close, volume=0,
             ))
-            cur += period_sec
+            cur += self._period_ms
 
     def update(self, ts_ms: int, price: float) -> None:
         """处理一个新 tick，O(1)"""
-        win_ts = self._window_ts(ts_ms)  # 秒
+        win_ts = self._window_ts(ts_ms)  # 毫秒
 
         if self._current is None:
-            self._current = _Bar(ts=win_ts, open=price, high=price,
-                                  low=price, close=price, volume=1)
-            return
+            # 检查新 tick 是否落在历史最后一根K线的窗口内
+            if self._finished and self._finished[-1].ts == win_ts:
+                self._current = self._finished.pop()
+            else:
+                self._current = _Bar(ts=win_ts, open=price, high=price,
+                                      low=price, close=price, volume=1)
+                return
 
         if win_ts == self._current.ts:
             self._current.high = max(self._current.high, price)
@@ -108,7 +107,7 @@ class KlineBuilder:
                                   low=price, close=price, volume=1)
 
     def to_dataframe(self) -> pd.DataFrame:
-        """返回完整K线 DataFrame（历史 + 当前未完成K线），ts 单位秒，与 build_kline 一致"""
+        """返回完整K线 DataFrame（历史 + 当前未完成K线），ts 单位毫秒，与 build_kline 一致"""
         bars = self._finished.copy()
         if self._current is not None:
             bars.append(self._current)
@@ -121,7 +120,6 @@ class KlineBuilder:
         ])
 
     def trim(self, cutoff_ms: int) -> None:
-        """清理早于 cutoff_ms 的已完成K线（cutoff_ms 转换为秒比较）"""
-        cutoff_sec = cutoff_ms // 1000
-        while self._finished and self._finished[0].ts < cutoff_sec:
+        """清理早于 cutoff_ms 的已完成K线"""
+        while self._finished and self._finished[0].ts < cutoff_ms:
             self._finished.pop(0)
