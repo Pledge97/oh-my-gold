@@ -1,6 +1,7 @@
 # backend/core/scheduler.py
 import time
 from collections import deque
+from datetime import date
 
 import pandas as pd
 
@@ -25,7 +26,6 @@ _TICK_CACHE_MS = _TICK_CACHE_DAYS * 86400 * 1000
 
 # 慢速指标刷新间隔（秒）
 _4H_REFRESH_SEC = 3600    # 4小时K线每小时重建一次
-_DAILY_REFRESH_SEC = 3600 * 6  # 日线ADX每6小时重建一次
 
 # ── 内存缓存 ──────────────────────────────────────────────────
 # tick 缓存：deque 保证 O(1) 头部清理
@@ -41,7 +41,7 @@ _atr_daily_mean_cache: float = 0.0
 
 # 上次慢速刷新时间
 _last_4h_refresh: float = 0.0
-_last_daily_refresh: float = 0.0
+_last_daily_refresh_date: date = date.min  # 上次日线刷新的日期
 
 
 def _init_tick_cache() -> None:
@@ -79,7 +79,7 @@ def _refresh_slow_indicators(now: float) -> None:
     """按频率刷新4H K线和日线指标，避免每5秒全量重算"""
     global _kline_4h_cache, _ema_4h_20_cache, _ema_4h_60_cache
     global _daily_df_cache, _adx_cache, _atr_daily_mean_cache
-    global _last_4h_refresh, _last_daily_refresh
+    global _last_4h_refresh, _last_daily_refresh_date
 
     ticks = list(_tick_cache)
 
@@ -93,20 +93,21 @@ def _refresh_slow_indicators(now: float) -> None:
             _ema_4h_20_cache = _ema_4h_60_cache = 0.0
         _last_4h_refresh = now
 
-    # 日线ADX：每6小时重建
-    if now - _last_daily_refresh >= _DAILY_REFRESH_SEC:
+    # 日线ADX：每天 00:01 后首次 tick 时刷新
+    today = date.today()
+    t = time.localtime()
+    past_midnight = t.tm_hour > 0 or t.tm_min >= 1
+    if today != _last_daily_refresh_date and past_midnight:
         _daily_df_cache = _load_daily_df()
         min_daily = config.ADX_PERIOD + config.ADX_LOOKBACK + 1
         if len(_daily_df_cache) >= min_daily:
             _adx_cache = calc_adx(_daily_df_cache, config.ADX_PERIOD)
         if len(_daily_df_cache) >= config.ATR_PERIOD * 2:
             _atr_daily_mean_cache = calc_atr(_daily_df_cache, config.ATR_PERIOD)
-        _last_daily_refresh = now
+        _last_daily_refresh_date = today
 
 
 def _update_context(price: float, ts: int) -> None:
-    global _last_4h_refresh, _last_daily_refresh
-
     now = time.time()
 
     # 追加新 tick 到内存缓存（同时清理过期数据）
