@@ -9,7 +9,7 @@ from backend.core.context import MarketContext, IndicatorSnapshot, ctx
 from backend.core.event_bus import bus
 from backend.core.market_hours import is_trading_time
 from backend.data.fetcher_tick import run_once as fetch_tick
-from backend.data.kline import build_kline
+from backend.data.kline import build_kline, KlineBuilder
 from backend.db.database import get_conn
 from backend.indicators.adx import calc_adx
 from backend.indicators.atr import calc_atr
@@ -39,6 +39,9 @@ _ema_4h_60_cache: float = 0.0
 _adx_cache: dict = {"adx": 0.0, "plus_di": 0.0, "minus_di": 0.0, "adx_series": None}
 _atr_daily_mean_cache: float = 0.0
 
+# 5分钟K线增量构建器
+_kline_5m_builder: KlineBuilder = KlineBuilder(period_sec=300)
+
 # 上次慢速刷新时间
 _last_4h_refresh: float = 0.0
 _last_daily_refresh_date: date = date.min  # 上次日线刷新的日期
@@ -46,7 +49,7 @@ _last_daily_refresh_date: date = date.min  # 上次日线刷新的日期
 
 def _init_tick_cache() -> None:
     """服务启动时从数据库加载历史 tick 到内存缓存，并立即初始化慢速指标"""
-    global _tick_cache
+    global _tick_cache, _kline_5m_builder
     since_ms = int((time.time() - _TICK_CACHE_DAYS * 86400) * 1000)
     with get_conn() as conn:
         rows = conn.execute(
@@ -55,6 +58,12 @@ def _init_tick_cache() -> None:
         ).fetchall()
     _tick_cache = deque({"ts": r["ts"], "price": r["price"]} for r in rows)
     print(f"[scheduler] tick 缓存初始化：{len(_tick_cache)} 条")
+
+    # 用历史 tick 全量构建一次5分钟K线，初始化增量 builder
+    ticks = list(_tick_cache)
+    history_5m = build_kline(ticks, period_sec=300)
+    _kline_5m_builder = KlineBuilder(period_sec=300, history=history_5m)
+
     # 立即初始化慢速指标，不等第一个 tick 到来
     _refresh_slow_indicators(time.time())
 
@@ -116,9 +125,9 @@ def _update_context(price: float, ts: int) -> None:
     # 刷新慢速指标（按频率，不是每5秒）
     _refresh_slow_indicators(now)
 
-    # 5分钟K线：每次用全量 tick 重建（只需最近几百根，速度快）
-    ticks = list(_tick_cache)
-    kline_5m = build_kline(ticks, period_sec=300)
+    # 5分钟K线：增量更新当前K线，O(1)
+    _kline_5m_builder.update(ts, price)
+    kline_5m = _kline_5m_builder.to_dataframe()
 
     ctx.price = price
     ctx.ts = ts
@@ -156,8 +165,8 @@ def _update_context(price: float, ts: int) -> None:
         ctx.ready = True
 
     # 5分钟前价格（用于一级熔断）
-    if len(ticks) >= 60:
-        ctx.price_5m_ago = ticks[-60]["price"]
+    if len(_tick_cache) >= 60:
+        ctx.price_5m_ago = _tick_cache[-60]["price"]
 
     ctx.kline_5m = kline_5m
     ctx.kline_4h = _kline_4h_cache
