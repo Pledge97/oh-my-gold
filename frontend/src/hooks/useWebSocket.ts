@@ -1,18 +1,22 @@
 import { useEffect, useRef } from 'react'
 import { useStore } from '../store/useStore'
+import { fetchLatestPrice } from '../api/client'
 
 export function useWebSocket() {
   const setWsMessage = useStore(s => s.setWsMessage)
+  const setPrice = useStore(s => s.setPrice)
   const isMarketOpen = useStore(s => s.isMarketOpen)
   const wsRef = useRef<WebSocket | null>(null)
   const isMarketOpenRef = useRef(isMarketOpen)
 
-  // 保持 ref 与 state 同步，供 onclose 回调读取最新值
   useEffect(() => {
     isMarketOpenRef.current = isMarketOpen
   }, [isMarketOpen])
 
   useEffect(() => {
+    // 初始化时从数据库拉取最新价格，避免休市时显示 0
+    fetchLatestPrice().then(({ price }) => { if (price) setPrice(price) })
+
     function connect() {
       const ws = new WebSocket(`ws://${location.host}/ws`)
       wsRef.current = ws
@@ -20,7 +24,6 @@ export function useWebSocket() {
         try { setWsMessage(JSON.parse(e.data)) } catch {}
       }
       ws.onclose = () => {
-        // 休市时不重连，等市场开放后刷新页面即可
         if (isMarketOpenRef.current) {
           setTimeout(connect, 3000)
         }

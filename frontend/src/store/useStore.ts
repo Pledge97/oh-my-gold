@@ -25,6 +25,7 @@ interface Store {
   portfolio: PortfolioPosition | null
   isMarketOpen: boolean
   setWsMessage: (msg: WsMessage) => void
+  setPrice: (price: number) => void
   setSignals: (s: Signal[]) => void
   setPerformance: (p: Performance) => void
   setDailyPrices: (d: DailyPrice[]) => void
@@ -60,6 +61,7 @@ export const useStore = create<Store>((set) => ({
     }
   }),
   setSignals: (signals) => set({ signals }),
+  setPrice: (price) => set({ price }),
   setPerformance: (performance) => set({ performance }),
   setDailyPrices: (dailyPrices) => set({ dailyPrices }),
   setDbPositions: (dbPositions) => set({ dbPositions }),

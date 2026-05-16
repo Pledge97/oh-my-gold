@@ -2,7 +2,8 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from backend.db.database import get_conn
-from datetime import datetime
+from datetime import date, datetime
+from typing import Optional
 
 router = APIRouter(prefix="/api")
 
@@ -88,14 +89,44 @@ def get_tick_prices(hours: int = 24):
     return [{"ts": r["ts"], "price": r["price"]} for r in rows]
 
 
-@router.get("/prices/daily")
-def get_daily_prices(days: int = 30):
+@router.get("/prices/latest")
+def get_latest_price():
+    """返回数据库中最新一条 tick 价格，用于页面初始化显示"""
     with get_conn() as conn:
+        row = conn.execute(
+            "SELECT price FROM prices ORDER BY ts DESC LIMIT 1"
+        ).fetchone()
+    return {"price": row["price"] if row else 0.0}
+
+
+@router.get("/prices/daily")
+def get_daily_prices(
+    days: int = 30,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+):
+    with get_conn() as conn:
+        if start_date or end_date:
+            conditions = []
+            params = []
+            if start_date:
+                conditions.append("date >= ?")
+                params.append(start_date.isoformat())
+            if end_date:
+                conditions.append("date <= ?")
+                params.append(end_date.isoformat())
+            rows = conn.execute(
+                "SELECT date, open, high, low, close FROM daily_prices "
+                f"WHERE {' AND '.join(conditions)} ORDER BY date ASC",
+                params,
+            ).fetchall()
+            return [dict(r) for r in rows]
+
         rows = conn.execute(
             "SELECT date, open, high, low, close FROM daily_prices "
             "ORDER BY date DESC LIMIT ?", (days,)
         ).fetchall()
-    return list(reversed([dict(r) for r in rows]))
+        return list(reversed([dict(r) for r in rows]))
 
 
 class ClosePositionIn(BaseModel):
