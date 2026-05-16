@@ -54,6 +54,7 @@ export function PerformanceStats() {
       border: '1px solid #1a3a5c',
       borderRadius: 4,
       overflow: 'hidden',
+      flexShrink: 0,
     }}>
       <div className="panel-title">绩效统计</div>
       <div style={{ display: 'flex', gap: 8, padding: 10 }}>

@@ -12,6 +12,12 @@ const DEFAULT_CHART_HEIGHT = 380
 const LEFT_LOGICAL_PADDING = 0.5
 // 最新一根 K 线后保留的逻辑边距。
 const RIGHT_LOGICAL_PADDING = 1.5
+// Tooltip 距离鼠标指针的偏移量。
+const TOOLTIP_OFFSET = 12
+// Tooltip 预估宽度，用于避免贴近右侧时超出图表。
+const TOOLTIP_WIDTH = 150
+// Tooltip 预估高度，用于避免贴近底部时超出图表。
+const TOOLTIP_HEIGHT = 112
 
 /**
  * 按本地时区格式化图表横轴时间。
@@ -44,8 +50,34 @@ function fillTimeScale(chart: any, dataLength: number) {
   })
 }
 
+/**
+ * 把 Tooltip 定位到鼠标附近，并避免超出图表边界。
+ *
+ * @param tooltip Tooltip 元素。
+ * @param x 鼠标在图表内的横坐标。
+ * @param y 鼠标在图表内的纵坐标。
+ * @param width 图表宽度。
+ * @param height 图表高度。
+ */
+function placeTooltip(tooltip: HTMLDivElement, x: number, y: number, width: number, height: number) {
+  const left = x + TOOLTIP_WIDTH + TOOLTIP_OFFSET > width ? x - TOOLTIP_WIDTH - TOOLTIP_OFFSET : x + TOOLTIP_OFFSET
+  const top = y + TOOLTIP_HEIGHT + TOOLTIP_OFFSET > height ? y - TOOLTIP_HEIGHT - TOOLTIP_OFFSET : y + TOOLTIP_OFFSET
+  tooltip.style.left = `${Math.max(TOOLTIP_OFFSET, left)}px`
+  tooltip.style.top = `${Math.max(TOOLTIP_OFFSET, top)}px`
+}
+
+/**
+ * 隐藏图表 Tooltip。
+ *
+ * @param tooltip Tooltip 元素。
+ */
+function hideTooltip(tooltip: HTMLDivElement | null) {
+  if (tooltip) tooltip.style.display = 'none'
+}
+
 export function PriceChart() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const tooltipRef = useRef<HTMLDivElement>(null)
   const dataLengthRef = useRef(0)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chartRef = useRef<any>(null)
@@ -78,6 +110,10 @@ export function PriceChart() {
         borderColor: '#1a3a5c',
         tickMarkFormatter: formatLocalChartTime
       },
+      crosshair: {
+        vertLine: { labelVisible: false },
+        horzLine: { labelVisible: false }
+      },
       rightPriceScale: { borderColor: '#1a3a5c' },
       width: containerRef.current.clientWidth || DEFAULT_CHART_WIDTH,
       height: containerRef.current.clientHeight || DEFAULT_CHART_HEIGHT
@@ -94,6 +130,36 @@ export function PriceChart() {
       color: '#f0a500',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed
+    })
+
+    chart.subscribeCrosshairMove((param: any) => {
+      const tooltip = tooltipRef.current
+      const container = containerRef.current
+      const candleSeries = candleRef.current
+      if (!tooltip || !container || !candleSeries) return
+      if (!param.point) {
+        hideTooltip(tooltip)
+        return
+      }
+      const isOutside =
+        param.point.x < 0 ||
+        param.point.y < 0 ||
+        param.point.x > container.clientWidth ||
+        param.point.y > container.clientHeight
+      const candle = param.seriesData.get(candleSeries)
+      if (isOutside || !candle) {
+        hideTooltip(tooltip)
+        return
+      }
+      tooltip.style.display = 'block'
+      tooltip.innerHTML = `
+        <div style="color:#4fc3f7;margin-bottom:6px;">${formatLocalChartTime(candle.time)}</div>
+        <div>开：<span style="color:#f0d060">${candle.open.toFixed(2)}</span></div>
+        <div>高：<span style="color:#ff4d4f">${candle.high.toFixed(2)}</span></div>
+        <div>低：<span style="color:#00ff88">${candle.low.toFixed(2)}</span></div>
+        <div>收：<span style="color:#f0d060">${candle.close.toFixed(2)}</span></div>
+      `
+      placeTooltip(tooltip, param.point.x, param.point.y, container.clientWidth, container.clientHeight)
     })
 
     const ro = new ResizeObserver(() => {
@@ -153,7 +219,30 @@ export function PriceChart() {
         AU积存金 · 日K
         <span style={{ marginLeft: 'auto', color: '#2a4a6a', fontSize: 10 }}>布林带 BB(20,2)</span>
       </div>
-      <div ref={containerRef} style={{ width: '100%', flex: 1, minHeight: 0 }} />
+      <div
+        ref={containerRef}
+        onMouseLeave={() => hideTooltip(tooltipRef.current)}
+        style={{ width: '100%', flex: 1, minHeight: 0, position: 'relative' }}
+      >
+        <div
+          ref={tooltipRef}
+          style={{
+            position: 'absolute',
+            display: 'none',
+            zIndex: 10,
+            width: TOOLTIP_WIDTH,
+            padding: '8px 10px',
+            border: '1px solid #1a3a5c',
+            borderRadius: 4,
+            background: 'rgba(6, 11, 20, 0.94)',
+            boxShadow: '0 0 14px rgba(0, 212, 255, 0.18)',
+            color: '#c8d8e8',
+            fontSize: 11,
+            lineHeight: 1.6,
+            pointerEvents: 'none'
+          }}
+        />
+      </div>
     </div>
   )
 }
