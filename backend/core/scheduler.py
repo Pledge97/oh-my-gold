@@ -12,6 +12,7 @@ from backend.indicators.rsi import calc_rsi
 from backend.indicators.atr import calc_atr
 from backend.indicators.ema import calc_ema
 from backend.signals.regime_signal import detect_regime
+from backend.core.market_hours import is_trading_time
 from backend import config
 
 
@@ -94,6 +95,10 @@ def _update_context(price: float) -> None:
 
 
 async def tick_job(engine, broadcast_fn) -> None:
+    if not is_trading_time():
+        await broadcast_fn({"is_market_open": False})
+        return
+
     price = fetch_tick()
     if price is None:
         return
@@ -102,4 +107,5 @@ async def tick_job(engine, broadcast_fn) -> None:
     bus.publish("tick", {"price": price, "ts": int(time.time() * 1000)})
 
     result = engine.on_tick_v2(ctx)
+    result["is_market_open"] = True
     await broadcast_fn(result)

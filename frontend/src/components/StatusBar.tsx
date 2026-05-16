@@ -16,7 +16,7 @@ const STATE_LABEL: Record<string, string> = {
 }
 
 export function StatusBar() {
-  const { price, marketState, cbActive, cbLevel, dbPositions } = useStore()
+  const { price, marketState, cbActive, cbLevel, dbPositions, isMarketOpen } = useStore()
   const stateColor = STATE_COLOR[marketState] ?? '#888'
 
   const totalPnl = dbPositions.reduce((sum, pos) => {
@@ -39,6 +39,7 @@ export function StatusBar() {
       gap: 24,
       position: 'relative',
       overflow: 'hidden',
+      flexShrink: 0,
     }}>
       {/* 左侧装饰线 */}
       <div style={{
@@ -147,7 +148,9 @@ export function StatusBar() {
         <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
         {/* 时间 */}
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 10, color: '#2a4a6a', letterSpacing: '0.1em' }}>LIVE</div>
+          <div style={{ fontSize: 10, letterSpacing: '0.1em', color: isMarketOpen ? '#2a4a6a' : '#f0a500' }}>
+            {isMarketOpen ? 'LIVE' : '休市'}
+          </div>
           <div style={{ fontSize: 11, color: '#4fc3f7', fontFamily: "'Courier New', monospace" }}>
             {new Date().toLocaleTimeString('zh-CN', { hour12: false })}
           </div>

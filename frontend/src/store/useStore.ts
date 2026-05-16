@@ -23,6 +23,7 @@ interface Store {
   dbPositions: DbPosition[]
   /** V2 组合持仓，来自 WsMessage.portfolio */
   portfolio: PortfolioPosition | null
+  isMarketOpen: boolean
   setWsMessage: (msg: WsMessage) => void
   setSignals: (s: Signal[]) => void
   setPerformance: (p: Performance) => void
@@ -42,15 +43,22 @@ export const useStore = create<Store>((set) => ({
   lastSignalTs: 0,
   dbPositions: [],
   portfolio: null,
-  setWsMessage: (msg) => set((state) => ({
-    price: msg.price,
-    marketState: msg.market_state,
-    indicators: msg.indicators,
-    cbActive: msg.circuit_breaker.active,
-    cbLevel: msg.circuit_breaker.level,
-    lastSignalTs: msg.signal ? msg.ts : state.lastSignalTs,
-    portfolio: msg.portfolio,
-  })),
+  isMarketOpen: true,
+  setWsMessage: (msg) => set((state) => {
+    if (msg.is_market_open === false) {
+      return { isMarketOpen: false }
+    }
+    return {
+      isMarketOpen: true,
+      price: msg.price,
+      marketState: msg.market_state,
+      indicators: msg.indicators,
+      cbActive: msg.circuit_breaker.active,
+      cbLevel: msg.circuit_breaker.level,
+      lastSignalTs: msg.signal ? msg.ts : state.lastSignalTs,
+      portfolio: msg.portfolio,
+    }
+  }),
   setSignals: (signals) => set({ signals }),
   setPerformance: (performance) => set({ performance }),
   setDailyPrices: (dailyPrices) => set({ dailyPrices }),

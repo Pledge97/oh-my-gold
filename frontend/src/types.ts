@@ -43,6 +43,7 @@ export interface PortfolioPosition {
 }
 
 export interface WsMessage {
+  is_market_open: boolean
   ts: number
   price: number
   market_state: string
