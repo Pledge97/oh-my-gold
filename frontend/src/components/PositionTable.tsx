@@ -186,6 +186,7 @@ export function PositionTable() {
                   <span style={{ color: '#f0d060', fontFamily: "'Courier New', monospace" }}>{totalMarketValue.toFixed(0)}</span>
                 </span>
                 <span style={{ color: totalPnl >= 0 ? '#ff4d4f' : '#00ff88', fontFamily: "'Courier New', monospace" }}>
+                  <span style={{ color: '#4a6a8a' }}>盈亏 </span>
                   {totalPnl >= 0 ? '+' : ''}
                   {totalPnl.toFixed(2)}
                   <span style={{ fontSize: 10, marginLeft: 3, opacity: 0.85 }}>
