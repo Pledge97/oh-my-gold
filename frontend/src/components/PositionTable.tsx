@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button, DatePicker, Form, InputNumber, Modal, Table } from 'antd'
-import { PlusOutlined, DollarOutlined } from '@ant-design/icons'
+import { PlusOutlined, DollarOutlined, DeleteOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useStore, DbPosition } from '../store/useStore'
 import { createPosition, closePosition, fetchPositions } from '../api/client'
@@ -10,8 +10,9 @@ const SELL_FEE = 0.004
 const TABLE_SCROLL_HEIGHT = '100%'
 
 interface BuyFormValues {
-  amount_g: number
   open_price: number
+  amount_yuan?: number
+  amount_g?: number
   open_date: dayjs.Dayjs
 }
 
@@ -43,7 +44,7 @@ export function PositionTable() {
     setLoading(true)
     try {
       await createPosition({
-        amount_g: values.amount_g,
+        amount_g: values.amount_g!,
         open_price: values.open_price,
         open_date: values.open_date.format('YYYY-MM-DD')
       })
@@ -84,13 +85,7 @@ export function PositionTable() {
 
   const columns = [
     {
-      title: '开仓日期',
-      dataIndex: 'open_ts',
-      key: 'open_ts',
-      render: (v: number) => <span style={{ color: '#4fc3f7', fontSize: 11 }}>{new Date(v).toLocaleDateString('zh-CN')}</span>
-    },
-    {
-      title: '开仓价',
+      title: '买入价',
       dataIndex: 'open_price',
       key: 'open_price',
       render: (v: number) => <span style={{ color: '#f0d060', fontFamily: "'Courier New', monospace", fontSize: 12 }}>{v.toFixed(2)}</span>
@@ -123,11 +118,47 @@ export function PositionTable() {
       }
     },
     {
+      title: '买入时间',
+      dataIndex: 'open_ts',
+      key: 'open_ts',
+      render: (v: number) => <span style={{ color: '#4fc3f7', fontSize: 11 }}>{new Date(v).toLocaleDateString('zh-CN')}</span>
+    },
+    {
       title: '操作',
       key: 'action',
-      width: 50,
+      width: 80,
       render: (_: unknown, row: DbPosition) => (
-        <Button type="text" size="small" icon={<DollarOutlined />} onClick={() => openSell(row)} style={{ color: '#ff4d4f', padding: 0 }} title="卖出" />
+        <div style={{ display: 'flex', gap: 4 }}>
+          <Button type="text" size="small" icon={<DollarOutlined />} onClick={() => openSell(row)} style={{ color: '#ff4d4f', padding: 0 }} title="卖出" />
+          <Button
+            type="text"
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => {
+              Modal.confirm({
+                title: <span style={{ color: '#4fc3f7' }}>确认删除</span>,
+                content: (
+                  <span style={{ color: '#aaa' }}>
+                    确定要删除这笔底仓吗？（{row.amount_g}g ¥{row.open_price.toFixed(2)}）
+                  </span>
+                ),
+                okText: '删除',
+                okType: 'danger',
+                cancelText: '取消',
+                onOk: async () => {
+                  await closePosition(row.id, {
+                    close_price: row.open_price,
+                    close_date: dayjs().format('YYYY-MM-DD HH:mm')
+                  })
+                  reload()
+                },
+                modalRender: (modal) => <div style={{ background: '#0a1628', border: '1px solid #1a3a5c', borderRadius: 4 }}>{modal}</div>
+              })
+            }}
+            style={{ color: '#ff4d4f', padding: 0 }}
+            title="删除"
+          />
+        </div>
       )
     }
   ]
@@ -229,20 +260,54 @@ export function PositionTable() {
         cancelText="取消"
         styles={modalStyle}
       >
-        <Form form={buyForm} layout="vertical" initialValues={{ amount_g: 20, open_date: dayjs() }} style={{ marginTop: 16 }}>
-          <Form.Item
-            label={<span style={{ color: '#4fc3f7', fontSize: 12 }}>买入克数 (g)</span>}
-            name="amount_g"
-            rules={[{ required: true }, { type: 'number', min: 0.01 }]}
-          >
-            <InputNumber style={inputStyle} min={0.01} step={1} precision={2} suffix="g" />
-          </Form.Item>
+        <Form
+          form={buyForm}
+          layout="vertical"
+          initialValues={{ open_date: dayjs() }}
+          style={{ marginTop: 16 }}
+          onValuesChange={(changed, all) => {
+            const { open_price, amount_yuan, amount_g } = all
+            if (!open_price || open_price <= 0) return
+
+            if (changed.amount_yuan !== undefined && amount_yuan && amount_yuan > 0) {
+              buyForm.setFieldsValue({ amount_g: amount_yuan / open_price })
+            } else if (changed.amount_g !== undefined && amount_g && amount_g > 0) {
+              buyForm.setFieldsValue({ amount_yuan: amount_g * open_price })
+            } else if (changed.open_price !== undefined) {
+              if (amount_yuan && amount_yuan > 0) {
+                buyForm.setFieldsValue({ amount_g: amount_yuan / open_price })
+              } else if (amount_g && amount_g > 0) {
+                buyForm.setFieldsValue({ amount_yuan: amount_g * open_price })
+              }
+            }
+          }}
+        >
           <Form.Item
             label={<span style={{ color: '#4fc3f7', fontSize: 12 }}>买入价格 (元/g)</span>}
             name="open_price"
-            rules={[{ required: true }, { type: 'number', min: 0.01 }]}
+            rules={[{ required: true, message: '请输入买入价格' }, { type: 'number', min: 0.01 }]}
           >
             <InputNumber style={inputStyle} min={0.01} step={0.01} precision={2} prefix="¥" />
+          </Form.Item>
+          <Form.Item
+            label={<span style={{ color: '#4fc3f7', fontSize: 12 }}>买入金额 (元)</span>}
+            name="amount_yuan"
+            rules={[
+              { required: true, message: '请输入买入金额' },
+              { type: 'number', min: 0.01, message: '买入金额不能小于0.01' }
+            ]}
+          >
+            <InputNumber style={inputStyle} min={0.01} step={1} precision={2} prefix="¥" />
+          </Form.Item>
+          <Form.Item
+            label={<span style={{ color: '#4fc3f7', fontSize: 12 }}>买入克数 (g)</span>}
+            name="amount_g"
+            rules={[
+              { required: true, message: '请输入买入克数' },
+              { type: 'number', min: 0.01, message: '买入克数不能小于0.01' }
+            ]}
+          >
+            <InputNumber style={inputStyle} min={0.01} step={1} precision={2} suffix="g" />
           </Form.Item>
           <Form.Item label={<span style={{ color: '#4fc3f7', fontSize: 12 }}>买入日期</span>} name="open_date" rules={[{ required: true }]}>
             <DatePicker style={inputStyle} format="YYYY-MM-DD" />

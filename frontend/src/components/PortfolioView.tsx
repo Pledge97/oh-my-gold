@@ -67,7 +67,7 @@ export function PortfolioView() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid hsl(211, 56%, 23%)' }}>
-                {['批次', '买入价', '克数', '盈亏', '时间'].map((h) => (
+                {['批次', '买入价', '克数', '盈亏', '买入时间'].map((h) => (
                   <th key={h} style={{ padding: '4px 8px', color: '#4fc3f7', fontWeight: 400, fontSize: 10, textAlign: 'left', letterSpacing: '0.06em' }}>
                     {h}
                   </th>

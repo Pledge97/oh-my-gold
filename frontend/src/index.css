@@ -189,3 +189,9 @@ body {
 .price-value {
   animation: numPulse 2s ease-in-out infinite;
 }
+
+/* 表单错误提示字体大小 */
+.ant-form-item-explain-error {
+  font-size: 10px !important;
+}
+}
