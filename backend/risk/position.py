@@ -54,14 +54,13 @@ class PositionManager:
         ts = int(time.time() * 1000)
         fee = price * pos.amount_g * config.SELL_FEE_RATE
         pnl_yuan = (price - pos.open_price) * pos.amount_g - fee
-        pnl_g = pnl_yuan / price
         with get_conn() as conn:
             conn.execute(
                 """UPDATE positions SET status='CLOSED', close_ts=?, close_price=?,
-                   close_type=?, pnl_yuan=?, pnl_g=? WHERE id=?""",
-                (ts, price, close_type.value, pnl_yuan, pnl_g, pos.id),
+                   close_type=?, pnl_yuan=? WHERE id=?""",
+                (ts, price, close_type.value, pnl_yuan, pos.id),
             )
-        return {"pnl_yuan": pnl_yuan, "pnl_g": pnl_g}
+        return {"pnl_yuan": pnl_yuan}
 
     def load_open(self) -> list[Position]:
         with get_conn() as conn:

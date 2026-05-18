@@ -388,11 +388,10 @@ class StrategyEngine:
     def _save_position_close_v2(self, price: float, ts: int, reason: str) -> None:
         """更新 positions 表关闭本轮记录，使用累计已实现盈亏"""
         pnl_yuan = self._portfolio.realized_pnl
-        pnl_g = pnl_yuan / price if price > 0 else 0.0
         with get_conn() as conn:
             conn.execute(
                 """UPDATE positions SET status='CLOSED', close_ts=?, pnl_yuan=?,
-                   pnl_g=?, close_type=? WHERE id=?""",
-                (ts, round(pnl_yuan, 2), round(pnl_g, 4),
+                   close_type=? WHERE id=?""",
+                (ts, round(pnl_yuan, 2),
                  reason, self._portfolio.round_id),
             )

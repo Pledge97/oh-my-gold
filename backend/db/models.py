@@ -46,8 +46,7 @@ CREATE TABLE IF NOT EXISTS positions (
     close_ts    INTEGER,                    -- 平仓时间（毫秒时间戳）
     close_price REAL,                       -- 平仓价格（元/g）；手动平仓时填写
     close_type  TEXT,                       -- 平仓类型（TAKE_PROFIT_1/TAKE_PROFIT_TRAILING/STOP_LOSS_CLEAR/TREND_CLEAR/MANUAL 等）
-    pnl_yuan    REAL,                       -- 本轮累计盈亏（元，已扣手续费）
-    pnl_g       REAL                        -- 本轮累计盈亏（g，pnl_yuan / 平仓价）
+    pnl_yuan    REAL                        -- 本轮累计盈亏（元，已扣手续费）
 );
 """
 
