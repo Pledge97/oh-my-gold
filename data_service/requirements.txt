@@ -3,3 +3,4 @@ uvicorn[standard]==0.30.6
 apscheduler==3.10.4
 httpx==0.27.2
 pandas==2.2.2
+chinesecalendar==1.11.0

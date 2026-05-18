@@ -2,12 +2,13 @@
 # 独立的 tick 采集服务，与量化引擎解耦，共享同一个 SQLite 数据库。
 # 启动：uvicorn main:app --port 8001
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, time as dtime, timedelta, date
 from pathlib import Path
 import sqlite3
 import time
 
 import httpx
+import chinese_calendar
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, HTTPException, Query
 
@@ -18,6 +19,28 @@ DB_PATH = str(Path(__file__).parent.parent / "data" / "gold.db")
 JDJYGOLD_URL = "https://api.jdjygold.com/gw2/generic/jrm/h5/m/stdLatestPrice"
 JDJYGOLD_SKU = "1961543816"
 TICK_INTERVAL_SEC = 5
+
+
+# ── 交易时间判断 ───────────────────────────────────────────────
+
+def is_trading_time() -> bool:
+    dt = datetime.now()
+    weekday = dt.weekday()
+    t = dt.time()
+
+    if weekday == 6:
+        return False
+
+    if weekday == 5:
+        in_session = t < dtime(2, 30)
+    else:
+        in_session = t >= dtime(9, 0) or t < dtime(2, 30)
+
+    if not in_session:
+        return False
+
+    trade_date = (dt - timedelta(days=1)).date() if t < dtime(2, 30) else dt.date()
+    return chinese_calendar.is_workday(trade_date)
 
 
 # ── 数据库 ────────────────────────────────────────────────────
@@ -31,26 +54,21 @@ def get_conn() -> sqlite3.Connection:
 
 # ── 采集任务 ──────────────────────────────────────────────────
 
-def _fetch_price() -> float | None:
-    try:
-        r = httpx.get(
-            JDJYGOLD_URL,
-            params={"productSku": JDJYGOLD_SKU},
-            timeout=5,
-        )
-        d = r.json()
-        if d.get("success"):
-            return float(d["resultData"]["datas"]["price"])
-    except Exception:
-        pass
-    return None
-
-
-def tick_job() -> None:
-    price = _fetch_price()
-    if price is None:
-        print(f"[data_service] tick 采集失败")
+async def tick_job() -> None:
+    if not is_trading_time():
         return
+
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(JDJYGOLD_URL, params={"productSku": JDJYGOLD_SKU})
+        d = r.json()
+        if not d.get("success"):
+            return
+        price = float(d["resultData"]["datas"]["price"])
+    except Exception:
+        print("[data_service] tick 采集失败")
+        return
+
     ts = int(time.time() * 1000)
     with get_conn() as conn:
         conn.execute("INSERT INTO prices (ts, price) VALUES (?, ?)", (ts, price))
