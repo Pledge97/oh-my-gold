@@ -92,29 +92,6 @@ export function PortfolioView() {
             </tbody>
           </table>
 
-          {/* 下次触发价 */}
-          {(portfolio!.next_buy || portfolio!.next_tp || portfolio!.next_stop) && (
-            <div style={{ display: 'flex', gap: 0, borderTop: '1px solid #1a3a5c' }}>
-              {portfolio!.next_buy && (
-                <div style={{ flex: 1, padding: '5px 8px', borderRight: '1px solid #1a3a5c' }}>
-                  <div style={{ fontSize: 9, color: '#4fc3f7', marginBottom: 1 }}>加仓价</div>
-                  <div style={{ fontSize: 11, color: '#00ff88', fontFamily: "'Courier New', monospace" }}>¥{portfolio!.next_buy.toFixed(2)}</div>
-                </div>
-              )}
-              {portfolio!.next_tp && (
-                <div style={{ flex: 1, padding: '5px 8px', borderRight: '1px solid #1a3a5c' }}>
-                  <div style={{ fontSize: 9, color: '#4fc3f7', marginBottom: 1 }}>止盈价</div>
-                  <div style={{ fontSize: 11, color: '#ff4d4f', fontFamily: "'Courier New', monospace" }}>¥{portfolio!.next_tp.toFixed(2)}</div>
-                </div>
-              )}
-              {portfolio!.next_stop && (
-                <div style={{ flex: 1, padding: '5px 8px' }}>
-                  <div style={{ fontSize: 9, color: '#4fc3f7', marginBottom: 1 }}>止损价</div>
-                  <div style={{ fontSize: 11, color: '#f0a500', fontFamily: "'Courier New', monospace" }}>¥{portfolio!.next_stop.toFixed(2)}</div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
     </div>
