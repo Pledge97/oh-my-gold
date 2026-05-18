@@ -16,7 +16,7 @@ const STATE_LABEL: Record<string, string> = {
 }
 
 export function StatusBar() {
-  const { price, marketState, cbActive, cbLevel, dbPositions, portfolio, isMarketOpen } = useStore()
+  const { price, marketState, cbActive, cbLevel, dbPositions, portfolio, performance, isMarketOpen } = useStore()
   const stateColor = STATE_COLOR[marketState] ?? '#888'
 
   // 底仓汇总
@@ -146,6 +146,22 @@ export function StatusBar() {
           </span>
         </span>
       </div>
+
+      <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+
+      {/* 累计盈亏 */}
+      {performance && (() => {
+        const cum = performance.cumulative_pnl_yuan
+        const cumColor = cum >= 0 ? '#ff4d4f' : '#00ff88'
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
+            <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>累计盈亏</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: cumColor, textShadow: `0 0 8px ${cumColor}66`, fontFamily: "'Courier New', monospace" }}>
+              {cum >= 0 ? '+' : ''}{cum.toFixed(2)} 元
+            </span>
+          </div>
+        )
+      })()}
 
       {/* 右侧：市场状态 + 时间 */}
       <div style={{ marginLeft: 'auto', textAlign: 'right', display: 'flex', alignItems: 'center', gap: 16 }}>

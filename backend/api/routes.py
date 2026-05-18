@@ -71,27 +71,36 @@ def get_performance():
             sell_types
         ).fetchone()
 
-        # 总盈亏、胜率：仍从 positions 表统计（按轮次）
-        t = conn.execute(
-            "SELECT COUNT(*) cnt, SUM(pnl_yuan) total, "
-            "SUM(CASE WHEN pnl_yuan>0 THEN 1 ELSE 0 END) wins "
-            "FROM positions WHERE status='CLOSED'"
+        # 量化 T仓盈亏：有对应 position_lots 记录的 positions
+        quant = conn.execute(
+            "SELECT COUNT(*) cnt, SUM(p.pnl_yuan) total, "
+            "SUM(CASE WHEN p.pnl_yuan>0 THEN 1 ELSE 0 END) wins "
+            "FROM positions p WHERE p.status='CLOSED' "
+            "AND EXISTS (SELECT 1 FROM position_lots l WHERE l.round_id=p.id)"
         ).fetchone()
         aw = conn.execute(
-            "SELECT AVG(pnl_yuan) v FROM positions WHERE status='CLOSED' AND pnl_yuan>0"
+            "SELECT AVG(p.pnl_yuan) v FROM positions p WHERE p.status='CLOSED' AND p.pnl_yuan>0 "
+            "AND EXISTS (SELECT 1 FROM position_lots l WHERE l.round_id=p.id)"
         ).fetchone()
         al = conn.execute(
-            "SELECT AVG(pnl_yuan) v FROM positions WHERE status='CLOSED' AND pnl_yuan<=0"
+            "SELECT AVG(p.pnl_yuan) v FROM positions p WHERE p.status='CLOSED' AND p.pnl_yuan<=0 "
+            "AND EXISTS (SELECT 1 FROM position_lots l WHERE l.round_id=p.id)"
+        ).fetchone()
+
+        # 累计盈亏：所有已平仓（量化 + 手动底仓）
+        total_pnl_row = conn.execute(
+            "SELECT SUM(pnl_yuan) total FROM positions WHERE status='CLOSED'"
         ).fetchone()
 
     cnt = cnt_row["cnt"] or 0
-    rounds = t["cnt"] or 0
-    wins = t["wins"] or 0
+    rounds = quant["cnt"] or 0
+    wins = quant["wins"] or 0
     avg_w = aw["v"] or 0.0
     avg_l = al["v"] or 0.0
     return {
         "total_trades": cnt,
-        "total_pnl_yuan": round(t["total"] or 0.0, 2),
+        "total_pnl_yuan": round(quant["total"] or 0.0, 2),       # 量化 T仓盈亏
+        "cumulative_pnl_yuan": round(total_pnl_row["total"] or 0.0, 2),  # 全部累计盈亏
         "win_rate": round(wins / rounds, 4) if rounds else 0.0,
         "avg_win_yuan": round(avg_w, 2),
         "avg_loss_yuan": round(avg_l, 2),

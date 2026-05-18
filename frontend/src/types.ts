@@ -67,6 +67,7 @@ export interface Signal {
 export interface Performance {
   total_trades: number
   total_pnl_yuan: number
+  cumulative_pnl_yuan: number
   win_rate: number
   avg_win_yuan: number
   avg_loss_yuan: number

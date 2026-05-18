@@ -60,7 +60,7 @@ export function PerformanceStats() {
       <div style={{ display: 'flex', gap: 8, padding: 10 }}>
         <StatCard label="总交易" value={String(perf.total_trades)} color="#00d4ff" unit="笔" />
         <StatCard
-          label="总盈亏"
+          label="T仓盈亏"
           value={(perf.total_pnl_yuan >= 0 ? '+' : '') + perf.total_pnl_yuan.toFixed(2)}
           color={pnlColor}
           unit="元"
