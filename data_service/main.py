@@ -36,7 +36,7 @@ def is_trading_time() -> bool:
     elif weekday == 0:
         in_session = t >= dtime(9, 0)
     else:
-        in_session = t >= dtime(9, 0) or t < dtime(2, 30)
+        in_session = True
 
     if not in_session:
         return False

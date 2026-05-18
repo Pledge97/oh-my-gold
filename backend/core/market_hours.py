@@ -30,9 +30,9 @@ def is_trading_time(dt: datetime | None = None) -> bool:
     elif weekday == 0:
         in_session = t >= time(9, 0)
 
-    # 周二至周五：09:00 之后 或 凌晨 02:30 之前（前一天夜盘延续）
+    # 周二至周五：全天 24 小时开市
     else:
-        in_session = t >= time(9, 0) or t < time(2, 30)
+        in_session = True
 
     if not in_session:
         return False
