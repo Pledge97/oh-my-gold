@@ -48,6 +48,9 @@ CREATE TABLE IF NOT EXISTS base_holdings (
 );
 """
 
+# DEPRECATED (V3): 以下两个表不再由 init_db 创建。
+# T仓状态改由 signals 推导，底仓改用 base_holdings。
+# 保留仅供历史参考或手动迁移脚本使用。
 # positions 表：每轮 T仓交易一条记录（从初始建仓到全部平仓）
 # 手动建仓的底仓也存在此表，通过 position_lots 是否有对应记录来区分
 CREATE_POSITIONS = """
