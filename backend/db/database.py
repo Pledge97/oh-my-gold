@@ -24,7 +24,6 @@ def init_db(db_path: Optional[str] = None):
         for sql in [
             models.CREATE_DAILY_PRICES,
             models.CREATE_PRICES,
-            models.CREATE_PRICES_JD,
             models.CREATE_SIGNALS,
             models.CREATE_POSITIONS,
             models.CREATE_POSITION_LOTS,

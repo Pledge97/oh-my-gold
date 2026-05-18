@@ -21,14 +21,6 @@ CREATE TABLE IF NOT EXISTS prices (
 );
 """
 
-CREATE_PRICES_JD = """
-CREATE TABLE IF NOT EXISTS prices_jd (
-    id    INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts    INTEGER NOT NULL UNIQUE,  -- 采集时间（毫秒时间戳，唯一）
-    price REAL NOT NULL             -- 积存金实时价格（元/g）
-);
-"""
-
 CREATE_SIGNALS = """
 CREATE TABLE IF NOT EXISTS signals (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,5 +82,4 @@ CREATE TABLE IF NOT EXISTS circuit_breaker_logs (
 # 索引：加速按时间戳查询
 CREATE_INDEXES = """
 CREATE INDEX IF NOT EXISTS idx_prices_ts ON prices(ts);
-CREATE INDEX IF NOT EXISTS idx_prices_jd_ts ON prices_jd(ts);
 """
