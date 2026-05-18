@@ -43,7 +43,7 @@ def check_exit(ctx: MarketContext, open_price: float, peak_price: float) -> Exit
 
 from typing import Optional
 from backend.core.enums import ExitReason
-from backend.risk.position import PortfolioPosition
+from backend.risk.portfolio import PortfolioPosition
 
 
 @dataclass

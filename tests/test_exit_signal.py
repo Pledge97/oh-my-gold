@@ -2,13 +2,14 @@
 import pytest
 from unittest.mock import MagicMock
 from backend.signals.exit_signal import check_exit_signal
-from backend.risk.position import PortfolioPosition
+from backend.risk.portfolio import PortfolioPosition
 from backend.core.enums import MarketState, ExitReason
 
 
 def make_portfolio(avg_cost, total_g):
-    pos = PortfolioPosition(round_id=1)
-    pos.add_lot(1, avg_cost, total_g, 1000)
+    """创建持有 total_g 克、均价 avg_cost 的组合仓位（V3）"""
+    pos = PortfolioPosition()
+    pos.buy(avg_cost, total_g)
     return pos
 
 
@@ -19,7 +20,8 @@ def make_context(market_state=MarketState.OSCILLATION):
 
 
 def test_no_signal_when_empty():
-    pos = PortfolioPosition(round_id=1)
+    """空仓时无止损信号"""
+    pos = PortfolioPosition()
     signal = check_exit_signal(pos, current_price=1000.0, ctx=make_context())
     assert signal is None
 

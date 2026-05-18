@@ -1,7 +1,8 @@
 # backend/strategy/engine.py
 from backend.core.context import MarketContext
 from backend.core.enums import CloseType, ExitReason
-from backend.risk.position import PositionManager, Position, PortfolioPosition
+from backend.risk.position import PositionManager, Position
+from backend.risk.portfolio import PortfolioPosition
 from backend.risk.circuit_breaker import CircuitBreaker
 from backend.risk.risk_manager import RiskManager
 from backend.signals.regime_signal import detect_regime

@@ -44,7 +44,7 @@ def check_sell(ctx: MarketContext, open_price: float, peak_price: float) -> Sell
 
 from typing import Optional
 from backend.core.enums import ExitReason
-from backend.risk.position import PortfolioPosition
+from backend.risk.portfolio import PortfolioPosition
 
 
 @dataclass

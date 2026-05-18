@@ -123,14 +123,17 @@ def _check_oscillation_buy(
 
     required_drop = config.ATR_ADD_LOT_MULTIPLIER * atr
     if price <= last_buy_price - required_drop:
-        lot_count = portfolio.lot_count
-        if lot_count == 1:
+        # V3: 根据持仓量判断当前批次（LOT1=50g, LOT2=30g, LOT3=20g）
+        amount_g = portfolio.total_amount_g
+        if amount_g < config.LOT1_AMOUNT_G + config.LOT2_AMOUNT_G:
+            # 持仓 < 80g，说明只有第1批，触发第2批
             return BuySignalV2(
                 signal_type=SignalType.ADD_LOT,
                 amount_g=config.LOT2_AMOUNT_G,
                 reason=f"价格从{last_buy_price:.2f}跌{required_drop:.2f}，第2批加仓",
             )
-        if lot_count == 2:
+        elif amount_g < config.T_MAX_AMOUNT_G:
+            # 持仓 < 100g，说明有第1+2批，触发第3批
             return BuySignalV2(
                 signal_type=SignalType.ADD_LOT,
                 amount_g=config.LOT3_AMOUNT_G,

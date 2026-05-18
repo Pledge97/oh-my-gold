@@ -2,14 +2,14 @@
 import pytest
 from unittest.mock import MagicMock
 from backend.signals.sell_signal import check_sell_signal
-from backend.risk.position import PortfolioPosition
+from backend.risk.portfolio import PortfolioPosition
 from backend.core.enums import ExitReason
 
 
 def make_portfolio(avg_cost, total_g):
-    """创建一个持有 total_g 克、均价 avg_cost 的组合仓位"""
-    pos = PortfolioPosition(round_id=1)
-    pos.add_lot(1, avg_cost, total_g, 1000)
+    """创建一个持有 total_g 克、均价 avg_cost 的组合仓位（V3）"""
+    pos = PortfolioPosition()
+    pos.buy(avg_cost, total_g)
     return pos
 
 
@@ -24,7 +24,7 @@ def make_context(price, ema_5m_20=None):
 
 def test_no_signal_when_empty():
     """空仓时不触发任何信号"""
-    pos = PortfolioPosition(round_id=1)
+    pos = PortfolioPosition()
     signal = check_sell_signal(pos, make_context(1000.0))
     assert signal is None
 
@@ -51,7 +51,7 @@ def test_tp1_not_triggered_below_threshold():
 def test_tp1_only_fires_once():
     """tp1_done=True 后不重复触发第1次止盈"""
     pos = make_portfolio(avg_cost=1000.0, total_g=50.0)
-    pos.mark_tp1()
+    pos.tp1_done = True
     ctx = make_context(price=1010.0, ema_5m_20=990.0)
     signal = check_sell_signal(pos, ctx)
     assert signal is None or signal.exit_reason != ExitReason.TAKE_PROFIT_1
@@ -60,7 +60,7 @@ def test_tp1_only_fires_once():
 def test_tp2_triggers_at_1_2_pct():
     """扣除0.4%手续费后净盈利达到1.2%时触发第2次止盈，卖出20%"""
     pos = make_portfolio(avg_cost=1000.0, total_g=50.0)
-    pos.mark_tp1()
+    pos.tp1_done = True
     # 触发价 = 1000 * 1.012 / 0.996 ≈ 1016.07
     ctx = make_context(price=1016.07, ema_5m_20=990.0)
     signal = check_sell_signal(pos, ctx)
@@ -80,8 +80,8 @@ def test_tp2_requires_tp1_done():
 def test_trailing_tp_on_ema_break():
     """金价跌破5分钟EMA20，清空剩余持仓"""
     pos = make_portfolio(avg_cost=1000.0, total_g=20.0)
-    pos.mark_tp1()
-    pos.mark_tp2()
+    pos.tp1_done = True
+    pos.tp2_done = True
     ctx = make_context(price=998.0, ema_5m_20=1001.0)
     signal = check_sell_signal(pos, ctx)
     assert signal is not None
@@ -92,8 +92,8 @@ def test_trailing_tp_on_ema_break():
 def test_no_trailing_tp_when_price_above_ema():
     """金价高于EMA20时不触发追踪止盈"""
     pos = make_portfolio(avg_cost=1000.0, total_g=20.0)
-    pos.mark_tp1()
-    pos.mark_tp2()
+    pos.tp1_done = True
+    pos.tp2_done = True
     ctx = make_context(price=1005.0, ema_5m_20=1001.0)
     signal = check_sell_signal(pos, ctx)
     assert signal is None
@@ -110,7 +110,7 @@ def test_no_trailing_tp_without_tp1():
 def test_no_trailing_tp_without_tp2():
     """tp1已执行但tp2未执行时，价格跌破EMA不触发追踪止盈"""
     pos = make_portfolio(avg_cost=1000.0, total_g=50.0)
-    pos.mark_tp1()
+    pos.tp1_done = True
     ctx = make_context(price=998.0, ema_5m_20=1001.0)
     signal = check_sell_signal(pos, ctx)
     assert signal is None or signal.exit_reason != ExitReason.TAKE_PROFIT_TRAILING
