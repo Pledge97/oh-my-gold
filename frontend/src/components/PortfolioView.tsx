@@ -66,7 +66,7 @@ export function PortfolioView() {
           {/* 批次明细 */}
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #1a3a5c' }}>
+              <tr style={{ borderBottom: '1px solid hsl(211, 56%, 23%)' }}>
                 {['批次', '买入价', '克数', '盈亏', '时间'].map((h) => (
                   <th key={h} style={{ padding: '4px 8px', color: '#4fc3f7', fontWeight: 400, fontSize: 10, textAlign: 'left', letterSpacing: '0.06em' }}>
                     {h}
@@ -92,7 +92,9 @@ export function PortfolioView() {
                           ({lotPnlPct >= 0 ? '+' : ''}{(lotPnlPct * 100).toFixed(2)}%)
                         </span>
                       </td>
-                      <td style={{ padding: '5px 8px', color: '#4fc3f7' }}>{new Date(lot.open_ts).toLocaleTimeString('zh-CN', { hour12: false })}</td>
+                      <td style={{ padding: '5px 8px', color: '#4fc3f7' }}>
+                        {new Date(lot.open_ts).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\//g, '-').replace(/\s/g, ' ')}
+                      </td>
                     </tr>
                   )
                 })}
