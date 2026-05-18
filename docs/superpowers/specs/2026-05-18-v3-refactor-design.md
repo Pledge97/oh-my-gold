@@ -249,7 +249,12 @@ def _calc_sell_pnl(sold_g: float, sell_price: float,
 
 **累计盈亏**：T仓盈亏 + `SUM(pnl_yuan) FROM base_holdings WHERE status='CLOSED'`
 
-**胜率**：按每次卖出信号是否盈利统计（`pnl_yuan > 0` 的卖出信号数 / 总卖出信号数）
+**胜率**：按轮次统计。一轮 = 从第一次买入到全清仓（STOP_LOSS_CLEAR / TREND_CLEAR / TAKE_PROFIT_TRAILING）。该轮所有卖出信号的 `pnl_yuan` 之和 > 0 则为盈利轮次。
+
+```sql
+-- 每轮盈亏：以全清仓信号的 ts 为轮次边界，聚合该轮所有卖出的 pnl_yuan
+-- 实现时在 Python 层按轮次分组计算，不在 SQL 层实现
+```
 
 ---
 
