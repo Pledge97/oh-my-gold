@@ -16,18 +16,23 @@ const STATE_LABEL: Record<string, string> = {
 }
 
 export function StatusBar() {
-  const { price, marketState, cbActive, cbLevel, dbPositions, isMarketOpen } = useStore()
+  const { price, marketState, cbActive, cbLevel, dbPositions, portfolio, isMarketOpen } = useStore()
   const stateColor = STATE_COLOR[marketState] ?? '#888'
 
-  const totalPnl = dbPositions.reduce((sum, pos) => {
-    if (!price) return sum
-    return sum + (price - pos.open_price) * pos.amount_g - price * pos.amount_g * 0.004
-  }, 0)
+  // 底仓汇总
+  const baseCost = dbPositions.reduce((sum, pos) => sum + pos.open_price * pos.amount_g, 0)
+  const baseAmountG = dbPositions.reduce((sum, pos) => sum + pos.amount_g, 0)
 
-  const totalCost = dbPositions.reduce((sum, pos) => sum + pos.open_price * pos.amount_g, 0)
-  const totalPnlPct = totalCost > 0 ? totalPnl / totalCost : 0
-  const totalAmountG = dbPositions.reduce((sum, pos) => sum + pos.amount_g, 0)
+  // T仓汇总（来自 WebSocket portfolio）
+  const tAmountG = portfolio?.total_amount_g ?? 0
+  const tCost = portfolio?.total_cost ?? 0
+
+  // 合并
+  const totalAmountG = baseAmountG + tAmountG
+  const totalCost = baseCost + tCost
   const totalMarketValue = price ? price * totalAmountG : 0
+  const totalPnl = price ? totalMarketValue - price * totalAmountG * 0.004 - totalCost : 0
+  const totalPnlPct = totalCost > 0 ? totalPnl / totalCost : 0
 
   return (
     <div
