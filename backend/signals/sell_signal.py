@@ -94,8 +94,8 @@ def check_sell_signal(
             reason=f"T仓整体盈利{pnl:.2%}≥{config.TAKE_PROFIT_2_PCT:.2%}，卖出20%",
         )
 
-    # 第3次止盈（追踪）：tp1已执行且金价跌破5分钟EMA20，清空剩余
-    if portfolio.tp1_done and price < ema20:
+    # 第3次止盈（追踪）：tp1和tp2均已执行，金价跌破5分钟EMA20，清空剩余20%
+    if portfolio.tp1_done and portfolio.tp2_done and price < ema20:
         return SellSignalV2(
             exit_reason=ExitReason.TAKE_PROFIT_TRAILING,
             sell_ratio=1.0,

@@ -104,5 +104,13 @@ def test_no_trailing_tp_without_tp1():
     pos = make_portfolio(avg_cost=1000.0, total_g=50.0)
     ctx = make_context(price=998.0, ema_5m_20=1001.0)
     signal = check_sell_signal(pos, ctx)
-    # 盈利不足 0.6%（998 < 1000），应返回 None；不应触发追踪止盈
     assert signal is None or signal.exit_reason == ExitReason.TAKE_PROFIT_1
+
+
+def test_no_trailing_tp_without_tp2():
+    """tp1已执行但tp2未执行时，价格跌破EMA不触发追踪止盈"""
+    pos = make_portfolio(avg_cost=1000.0, total_g=50.0)
+    pos.mark_tp1()
+    ctx = make_context(price=998.0, ema_5m_20=1001.0)
+    signal = check_sell_signal(pos, ctx)
+    assert signal is None or signal.exit_reason != ExitReason.TAKE_PROFIT_TRAILING
