@@ -105,6 +105,7 @@ class PortfolioPosition:
         self.tp2_done: bool = False     # 第2次止盈是否已执行
         self._total_amount_g: float = 0.0
         self._total_cost: float = 0.0   # 总成本 = Σ(买入价 × 买入量)
+        self.realized_pnl: float = 0.0  # 累计已实现盈亏（扣手续费）
 
     @property
     def total_amount_g(self) -> float:
@@ -151,8 +152,12 @@ class PortfolioPosition:
         按比例减仓，返回实际卖出克数。
         按平均成本比例减少总成本，不对单笔单独计算。
         """
+        from backend import config
         sold_g = self._total_amount_g * ratio
-        self._total_cost -= self._total_cost * ratio
+        cost_removed = self._total_cost * ratio
+        fee = close_price * sold_g * config.SELL_FEE_RATE
+        self.realized_pnl += close_price * sold_g - cost_removed - fee
+        self._total_cost -= cost_removed
         self._total_amount_g -= sold_g
         self._total_amount_g = round(self._total_amount_g, 4)
         self._total_cost = round(self._total_cost, 4)
@@ -160,7 +165,10 @@ class PortfolioPosition:
 
     def clear(self, close_price: float, ts: int) -> float:
         """全部清仓，返回实际卖出克数"""
+        from backend import config
         sold_g = self._total_amount_g
+        fee = close_price * sold_g * config.SELL_FEE_RATE
+        self.realized_pnl += close_price * sold_g - self._total_cost - fee
         self._total_amount_g = 0.0
         self._total_cost = 0.0
         for lot in self.lots:

@@ -288,9 +288,6 @@ class StrategyEngine:
     def _execute_sell_v2(self, signal, ctx: MarketContext) -> dict:
         """执行止盈减仓/清仓"""
         ts = ctx.ts or int(time.time() * 1000)
-        # 在 clear/reduce 之前捕获持仓数据用于 PnL 计算
-        pre_amount_g = self._portfolio.total_amount_g
-        pre_cost = self._portfolio.total_cost
 
         if signal.sell_ratio >= 1.0:
             sold_g = self._portfolio.clear(ctx.price, ts)
@@ -304,17 +301,13 @@ class StrategyEngine:
 
         self._save_signal(ctx, signal.exit_reason.value, sold_g, signal.reason)
         if self._portfolio.is_empty():
-            self._save_position_close_v2(ctx.price, ts, signal.exit_reason.value,
-                                         pre_amount_g, pre_cost)
+            self._save_position_close_v2(ctx.price, ts, signal.exit_reason.value)
             self._v2_last_buy_price = None
         return {"type": signal.exit_reason.value, "amount_g": sold_g, "reason": signal.reason}
 
     def _execute_exit_v2(self, signal, ctx: MarketContext) -> dict:
         """执行止损减仓/清仓"""
         ts = ctx.ts or int(time.time() * 1000)
-        # 在 clear/reduce 之前捕获持仓数据用于 PnL 计算
-        pre_amount_g = self._portfolio.total_amount_g
-        pre_cost = self._portfolio.total_cost
 
         if signal.sell_ratio >= 1.0:
             sold_g = self._portfolio.clear(ctx.price, ts)
@@ -323,8 +316,7 @@ class StrategyEngine:
 
         self._save_signal(ctx, signal.exit_reason.value, sold_g, signal.reason)
         if self._portfolio.is_empty():
-            self._save_position_close_v2(ctx.price, ts, signal.exit_reason.value,
-                                         pre_amount_g, pre_cost)
+            self._save_position_close_v2(ctx.price, ts, signal.exit_reason.value)
             self._v2_last_buy_price = None
         return {"type": signal.exit_reason.value, "amount_g": sold_g, "reason": signal.reason}
 
@@ -383,7 +375,7 @@ class StrategyEngine:
             )
 
     def _save_lot_v2(self, lot) -> None:
-        """在 position_lots 表记录批次买入"""
+        """在 ccccccccccccccccccccccccccccccccccccccccccccccccccc 表记录批次买入"""
         with get_conn() as conn:
             conn.execute(
                 """INSERT INTO position_lots
@@ -393,11 +385,9 @@ class StrategyEngine:
                  lot.open_ts, lot.open_price, lot.amount_g),
             )
 
-    def _save_position_close_v2(self, price: float, ts: int, reason: str,
-                                 total_amount_g: float, total_cost: float) -> None:
-        """更新 positions 表关闭本轮记录（接收预计算的持仓量和成本）"""
-        fee = price * total_amount_g * config.SELL_FEE_RATE
-        pnl_yuan = price * total_amount_g - total_cost - fee
+    def _save_position_close_v2(self, price: float, ts: int, reason: str) -> None:
+        """更新 positions 表关闭本轮记录，使用累计已实现盈亏"""
+        pnl_yuan = self._portfolio.realized_pnl
         pnl_g = pnl_yuan / price if price > 0 else 0.0
         with get_conn() as conn:
             conn.execute(
