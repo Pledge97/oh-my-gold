@@ -33,30 +33,32 @@ export function PortfolioView() {
         T仓组合
         {portfolio?.tp1_done && <span style={{ fontSize: 10, color: '#f0a500', border: '1px solid #f0a500', borderRadius: 2, padding: '0 4px' }}>止盈1</span>}
         {portfolio?.tp2_done && <span style={{ fontSize: 10, color: '#f0d060', border: '1px solid #f0d060', borderRadius: 2, padding: '0 4px' }}>止盈2</span>}
-        {!isEmpty && (
-          <span style={{ marginLeft: 'auto', display: 'flex', gap: 12, fontSize: 11 }}>
-            <span>
-              <span style={{ color: '#4a6a8a' }}>持仓 </span>
-              <span style={{ color: '#c8d8e8', fontFamily: "'Courier New', monospace" }}>
-                {portfolio!.total_amount_g.toFixed(1)}
-                <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7, textTransform: 'none' }}>g</span>
-              </span>
-            </span>
-            <span>
-              <span style={{ color: '#4a6a8a' }}>均价 </span>
-              <span style={{ color: '#f0d060', fontFamily: "'Courier New', monospace" }}>¥{portfolio!.avg_cost.toFixed(2)}</span>
-            </span>
-            <span style={{ color: pnlColor(pnlPct), fontFamily: "'Courier New', monospace" }}>
-              <span style={{ color: '#4a6a8a' }}>盈亏 </span>
-              {pnlYuan >= 0 ? '+' : ''}
-              {pnlYuan.toFixed(2)}
-              <span style={{ fontSize: 10, marginLeft: 3, opacity: 0.85 }}>
-                ({pnlPct >= 0 ? '+' : ''}
-                {(pnlPct * 100).toFixed(2)}%)
-              </span>
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 12, fontSize: 11 }}>
+          <span>
+            <span style={{ color: '#4a6a8a' }}>持仓 </span>
+            <span style={{ color: '#c8d8e8', fontFamily: "'Courier New', monospace" }}>
+              {isEmpty ? '0' : portfolio!.total_amount_g.toFixed(1)}
+              <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7, textTransform: 'none' }}>g</span>
             </span>
           </span>
-        )}
+          <span>
+            <span style={{ color: '#4a6a8a' }}>均价 </span>
+            <span style={{ color: '#f0d060', fontFamily: "'Courier New', monospace" }}>
+              {isEmpty ? '—' : `¥${portfolio!.avg_cost.toFixed(2)}`}
+            </span>
+          </span>
+          <span style={{ color: isEmpty ? '#4a6a8a' : pnlColor(pnlPct), fontFamily: "'Courier New', monospace" }}>
+            <span style={{ color: '#4a6a8a' }}>盈亏 </span>
+            {isEmpty ? '0' : (
+              <>
+                {pnlYuan >= 0 ? '+' : ''}{pnlYuan.toFixed(2)}
+                <span style={{ fontSize: 10, marginLeft: 3, opacity: 0.85 }}>
+                  ({pnlPct >= 0 ? '+' : ''}{(pnlPct * 100).toFixed(2)}%)
+                </span>
+              </>
+            )}
+          </span>
+        </span>
       </div>
 
       {isEmpty ? (
