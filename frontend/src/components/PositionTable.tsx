@@ -104,6 +104,7 @@ export function PositionTable() {
     {
       title: '盈亏',
       key: 'pnl',
+      width: 150,
       render: (_: unknown, row: DbPosition) => {
         if (!price || price === 0) return <span style={{ color: '#2a4a6a' }}>—</span>
         const pnl = (price - row.open_price) * row.amount_g - price * row.amount_g * SELL_FEE
