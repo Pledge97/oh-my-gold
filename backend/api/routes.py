@@ -18,11 +18,21 @@ def get_signals(limit: int = 50):
 
 
 @router.get("/positions")
-def get_positions(status: str = "OPEN"):
+def get_positions(status: str = "OPEN", source: str = "all"):
     with get_conn() as conn:
-        rows = conn.execute(
-            "SELECT * FROM positions WHERE status=? ORDER BY open_ts DESC", (status,)
-        ).fetchall()
+        if source == "manual":
+            # 手动建仓：positions 表中没有对应 position_lots 记录的条目
+            rows = conn.execute(
+                "SELECT p.* FROM positions p "
+                "WHERE p.status=? AND NOT EXISTS "
+                "(SELECT 1 FROM position_lots l WHERE l.round_id=p.id) "
+                "ORDER BY p.open_ts DESC",
+                (status,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM positions WHERE status=? ORDER BY open_ts DESC", (status,)
+            ).fetchall()
     return [dict(r) for r in rows]
 
 

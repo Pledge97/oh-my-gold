@@ -6,8 +6,9 @@ import { StatusBar } from './components/StatusBar'
 import { PriceChart } from './components/PriceChart'
 import { TickChart } from './components/TickChart'
 import { SignalPanel } from './components/SignalPanel'
-import { PositionTable } from './components/PositionTable'
 import { PerformanceStats } from './components/PerformanceStats'
+import { PositionTable } from './components/PositionTable'
+import { PortfolioView } from './components/PortfolioView'
 
 export default function App() {
   useWebSocket()
@@ -63,11 +64,18 @@ export default function App() {
             <TickChart />
           </div>
 
-          {/* 右侧：信号 + 持仓，各占一半 */}
+          {/* 右侧：信号+组合视图各占原信号高度一半，底仓独占一半 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
-            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <SignalPanel />
+            {/* 信号 + 组合视图，合计占 flex:1 */}
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <SignalPanel />
+              </div>
+              <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <PortfolioView />
+              </div>
             </div>
+            {/* 底仓，占 flex:1 */}
             <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <PositionTable />
             </div>

@@ -33,8 +33,8 @@ const getDefaultDailyRange = () => {
 export const fetchSignals = (limit = 50) =>
   fetch(`${BASE}/signals?limit=${limit}`).then(r => r.json())
 
-export const fetchPositions = (status = 'OPEN') =>
-  fetch(`${BASE}/positions?status=${status}`).then(r => r.json())
+export const fetchPositions = (status = 'OPEN', source = 'all') =>
+  fetch(`${BASE}/positions?status=${status}&source=${source}`).then(r => r.json())
 
 export const fetchPerformance = () =>
   fetch(`${BASE}/performance`).then(r => r.json())
