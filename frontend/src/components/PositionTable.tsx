@@ -151,6 +151,15 @@ export function PositionTable() {
 
   const inputStyle = { width: '100%', background: '#060b14', borderColor: '#1a3a5c', color: '#c8d8e8' }
 
+  const totalAmountG = dbPositions.reduce((sum, pos) => sum + pos.amount_g, 0)
+  const totalMarketValue = price ? price * totalAmountG : 0
+  const totalPnl = price
+    ? dbPositions.reduce((sum, pos) =>
+        sum + (price - pos.open_price) * pos.amount_g - price * pos.amount_g * SELL_FEE, 0)
+    : 0
+  const totalCost = dbPositions.reduce((sum, pos) => sum + pos.open_price * pos.amount_g, 0)
+  const totalPnlPct = totalCost > 0 ? totalPnl / totalCost : 0
+
   return (
     <>
       <div style={{ background: '#0a1628', border: '1px solid #1a3a5c', borderRadius: 4, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -168,6 +177,30 @@ export function PositionTable() {
             手动建仓
           </Button>
         </div>
+
+        {/* 底仓汇总统计 */}
+        {dbPositions.length > 0 && (
+          <div style={{ display: 'flex', borderBottom: '1px solid #1a3a5c' }}>
+            {[
+              { label: '持仓克数', value: `${totalAmountG.toFixed(1)}g`, color: '#c8d8e8' },
+              { label: '持仓金额', value: `${totalMarketValue.toFixed(0)}元`, color: '#f0d060' },
+              {
+                label: '持仓盈亏',
+                value: `${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}元`,
+                sub: `(${totalPnlPct >= 0 ? '+' : ''}${(totalPnlPct * 100).toFixed(2)}%)`,
+                color: totalPnl >= 0 ? '#ff4d4f' : '#00ff88',
+              },
+            ].map(({ label, value, sub, color }) => (
+              <div key={label} style={{ flex: 1, padding: '5px 10px', borderRight: '1px solid #1a3a5c' }}>
+                <div style={{ fontSize: 9, color: '#4fc3f7', letterSpacing: '0.08em', marginBottom: 2 }}>{label}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color, fontFamily: "'Courier New', monospace" }}>
+                  {value}
+                  {sub && <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.85 }}>{sub}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="panel-table-body">
           <Table<DbPosition>
             dataSource={dbPositions}
