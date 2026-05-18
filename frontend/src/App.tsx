@@ -51,7 +51,7 @@ export default function App() {
       {/* 主内容 */}
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* 中间区域：图表 + 右侧面板 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 480px', gap: 12, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 600px', gap: 12, flex: 1, minHeight: 0, overflow: 'hidden' }}>
           {/* K线图 + Tick图 */}
           <div style={{
             overflow: 'hidden',
