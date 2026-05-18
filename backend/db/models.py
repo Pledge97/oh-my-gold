@@ -29,7 +29,22 @@ CREATE TABLE IF NOT EXISTS signals (
     mode     TEXT NOT NULL,     -- 市场状态（OSCILLATION/TREND_UP/TREND_DOWN/TREND_DECAY）
     price    REAL NOT NULL,     -- 触发时的金价（元/g）
     amount_g REAL NOT NULL,     -- 本次操作克数（g）
-    reason   TEXT               -- 触发原因描述
+    reason   TEXT,              -- 触发原因描述
+    pnl_yuan REAL               -- 本次卖出实现盈亏（元，仅卖出信号填写）
+);
+"""
+
+# V3 底仓表：手动建仓的底仓记录，独立于 T仓信号流
+CREATE_BASE_HOLDINGS = """
+CREATE TABLE IF NOT EXISTS base_holdings (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    open_ts     INTEGER NOT NULL,              -- 建仓时间（毫秒时间戳）
+    open_price  REAL NOT NULL,                 -- 买入价格（元/g）
+    amount_g    REAL NOT NULL,                 -- 持仓克数（g）
+    status      TEXT NOT NULL DEFAULT 'OPEN',  -- 持仓状态（OPEN/CLOSED）
+    close_ts    INTEGER,                       -- 平仓时间（毫秒时间戳，NULL 表示未平仓）
+    close_price REAL,                          -- 平仓价格（元/g，NULL 表示未平仓）
+    pnl_yuan    REAL                           -- 实现盈亏（元，NULL 表示未平仓）
 );
 """
 
@@ -78,7 +93,10 @@ CREATE TABLE IF NOT EXISTS circuit_breaker_logs (
 );
 """
 
-# 索引：加速按时间戳查询
+# 索引：加速常用查询字段的检索
 CREATE_INDEXES = """
 CREATE INDEX IF NOT EXISTS idx_prices_ts ON prices(ts);
+CREATE INDEX IF NOT EXISTS idx_signals_ts ON signals(ts);
+CREATE INDEX IF NOT EXISTS idx_signals_type ON signals(type);
+CREATE INDEX IF NOT EXISTS idx_base_holdings_status ON base_holdings(status);
 """
