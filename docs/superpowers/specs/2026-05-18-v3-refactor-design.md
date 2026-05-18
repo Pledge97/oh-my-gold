@@ -245,18 +245,19 @@ def _calc_sell_pnl(sold_g: float, sell_price: float,
 
 **总交易笔数**：`signals` 中卖出类型信号数（不变）
 
-**T仓盈亏**：`SUM(pnl_yuan) FROM signals WHERE type IN (sell_types)`（改从 signals 读，不再从 positions）
+**T仓盈亏**：`SUM(pnl_yuan) FROM signals WHERE type IN (sell_types)`
 
 **累计盈亏**：T仓盈亏 + `SUM(pnl_yuan) FROM base_holdings WHERE status='CLOSED'`
 
-**胜率**：按全清仓轮次统计（`STOP_LOSS_CLEAR/TREND_CLEAR/TAKE_PROFIT_TRAILING` 信号数为总轮次，其中 pnl_yuan>0 的为盈利轮次）
+**胜率**：按每次卖出信号是否盈利统计（`pnl_yuan > 0` 的卖出信号数 / 总卖出信号数）
 
 ---
 
-## 十、迁移策略
+## 十、迁移策略（已完成）
 
-由于 positions 和 position_lots 表删除，现有数据需迁移：
+迁移脚本已手动执行，现有数据状态：
 
-1. 将 `positions` 中 `close_type='MANUAL'` 的记录迁移到 `base_holdings`
-2. 当前 OPEN 的 T仓状态（如有）从 `signals` 表重建，positions 记录丢弃
-3. `signals` 表已有历史记录的 `pnl_yuan` 字段补写（手动或脚本）
+1. ✅ `signals` 表新增 `pnl_yuan` 字段，历史卖出记录（id=18: 178.93元，id=19: 56.34元）已补写
+2. ✅ `base_holdings` 表已创建，7条底仓 OPEN 记录 + 1条 CLOSED 记录已从 `positions` 迁移
+3. ✅ 当前 T仓状态（signal id=20，996.44买入50g）可从 `signals` 表重建
+4. 实施计划执行时直接删除 `positions` 和 `position_lots` 旧表
