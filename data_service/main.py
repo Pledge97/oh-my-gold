@@ -33,6 +33,8 @@ def is_trading_time() -> bool:
 
     if weekday == 5:
         in_session = t < dtime(2, 30)
+    elif weekday == 0:
+        in_session = t >= dtime(9, 0)
     else:
         in_session = t >= dtime(9, 0) or t < dtime(2, 30)
 
