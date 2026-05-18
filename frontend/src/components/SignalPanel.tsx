@@ -7,14 +7,28 @@ const TABLE_SCROLL_HEIGHT = '100%'
 
 const TYPE_COLOR: Record<string, string> = {
   BUY: '#ff4d4f',
+  ADD_LOT: '#ff8c00',
   TAKE_PROFIT: '#00d4ff',
-  STOP_LOSS: '#ff4d4f'
+  TAKE_PROFIT_1: '#00d4ff',
+  TAKE_PROFIT_2: '#00d4ff',
+  TAKE_PROFIT_TRAILING: '#00d4ff',
+  STOP_LOSS: '#ff4d4f',
+  STOP_LOSS_HALF: '#f0a500',
+  STOP_LOSS_CLEAR: '#ff4d4f',
+  TREND_CLEAR: '#ff4d4f',
 }
 
 const TYPE_LABEL: Record<string, string> = {
   BUY: '买入',
+  ADD_LOT: '加仓',
   TAKE_PROFIT: '止盈',
-  STOP_LOSS: '止损'
+  TAKE_PROFIT_1: '止盈1',
+  TAKE_PROFIT_2: '止盈2',
+  TAKE_PROFIT_TRAILING: '追踪止盈',
+  STOP_LOSS: '止损',
+  STOP_LOSS_HALF: '减仓',
+  STOP_LOSS_CLEAR: '清仓',
+  TREND_CLEAR: '趋势清仓',
 }
 
 export function SignalPanel() {

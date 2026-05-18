@@ -140,8 +140,12 @@ body {
 
 /* 扫描线动画 */
 @keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
 }
 
 .dashboard-scanline {
@@ -182,8 +186,13 @@ body {
 
 /* 数字闪烁 */
 @keyframes numPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.85; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
 }
 
 .price-value {
@@ -192,6 +201,5 @@ body {
 
 /* 表单错误提示字体大小 */
 .ant-form-item-explain-error {
-  font-size: 10px !important;
-}
+  font-size: 11px !important;
 }
