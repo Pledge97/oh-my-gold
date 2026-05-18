@@ -58,7 +58,20 @@ def create_position(body: ManualPositionIn):
 
 @router.get("/performance")
 def get_performance():
+    sell_types = (
+        'TAKE_PROFIT', 'TAKE_PROFIT_1', 'TAKE_PROFIT_2', 'TAKE_PROFIT_TRAILING',
+        'STOP_LOSS', 'STOP_LOSS_HALF', 'STOP_LOSS_CLEAR', 'TREND_CLEAR'
+    )
+    placeholders = ','.join('?' * len(sell_types))
+
     with get_conn() as conn:
+        # 总交易笔数：signals 表中卖出类型的信号数量
+        cnt_row = conn.execute(
+            f"SELECT COUNT(*) cnt FROM signals WHERE type IN ({placeholders})",
+            sell_types
+        ).fetchone()
+
+        # 总盈亏、胜率：仍从 positions 表统计（按轮次）
         t = conn.execute(
             "SELECT COUNT(*) cnt, SUM(pnl_yuan) total, "
             "SUM(CASE WHEN pnl_yuan>0 THEN 1 ELSE 0 END) wins "
@@ -70,14 +83,16 @@ def get_performance():
         al = conn.execute(
             "SELECT AVG(pnl_yuan) v FROM positions WHERE status='CLOSED' AND pnl_yuan<=0"
         ).fetchone()
-    cnt = t["cnt"] or 0
+
+    cnt = cnt_row["cnt"] or 0
+    rounds = t["cnt"] or 0
     wins = t["wins"] or 0
     avg_w = aw["v"] or 0.0
     avg_l = al["v"] or 0.0
     return {
         "total_trades": cnt,
         "total_pnl_yuan": round(t["total"] or 0.0, 2),
-        "win_rate": round(wins / cnt, 4) if cnt else 0.0,
+        "win_rate": round(wins / rounds, 4) if rounds else 0.0,
         "avg_win_yuan": round(avg_w, 2),
         "avg_loss_yuan": round(avg_l, 2),
         "profit_loss_ratio": round(abs(avg_w / avg_l), 2) if avg_l else 0.0,
