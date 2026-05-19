@@ -5,9 +5,9 @@ from backend.risk.portfolio import PortfolioPosition, load_portfolio_from_signal
 from backend.risk.circuit_breaker import CircuitBreaker
 from backend.risk.risk_manager import RiskManager
 from backend.signals.regime_signal import detect_regime
-from backend.signals.buy_signal import check_buy, check_buy_signal
-from backend.signals.sell_signal import check_sell, check_sell_signal
-from backend.signals.exit_signal import check_exit, check_exit_signal
+from backend.signals.buy_signal import check_buy_signal
+from backend.signals.sell_signal import check_sell_signal
+from backend.signals.exit_signal import check_exit_signal
 from backend.db.database import get_conn
 from typing import Optional
 from backend import config

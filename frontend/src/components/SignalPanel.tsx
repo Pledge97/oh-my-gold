@@ -13,8 +13,7 @@ const TYPE_COLOR: Record<string, string> = {
   TAKE_PROFIT_TRAILING: '#00d4ff',
   STOP_LOSS_HALF: '#f0a500',
   STOP_LOSS_CLEAR: '#ff4d4f',
-  TREND_CLEAR: '#ff4d4f',
-  OVERNIGHT_TRAILING: '#00d4ff'
+  TREND_CLEAR: '#ff4d4f'
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -25,8 +24,7 @@ const TYPE_LABEL: Record<string, string> = {
   TAKE_PROFIT_TRAILING: '追踪止盈',
   STOP_LOSS_HALF: '减仓',
   STOP_LOSS_CLEAR: '清仓',
-  TREND_CLEAR: '趋势清仓',
-  OVERNIGHT_TRAILING: '隔夜止损'
+  TREND_CLEAR: '趋势清仓'
 }
 
 export function SignalPanel() {
@@ -92,8 +90,7 @@ export function SignalPanel() {
           'TAKE_PROFIT_TRAILING',
           'STOP_LOSS_HALF',
           'STOP_LOSS_CLEAR',
-          'TREND_CLEAR',
-          'OVERNIGHT_TRAILING'
+          'TREND_CLEAR'
         ].includes(record.type)
         if (!isSell || v == null) return <span style={{ color: '#4a6a8a', fontSize: 11 }}>-</span>
         const color = v >= 0 ? '#ff4d4f' : '#00ff88'

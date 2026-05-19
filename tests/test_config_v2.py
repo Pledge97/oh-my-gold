@@ -12,7 +12,6 @@ from backend.config import (
     TAKE_PROFIT_1_SELL_RATIO,
     TAKE_PROFIT_2_SELL_RATIO,
     ATR_ADD_LOT_MULTIPLIER,
-    OVERNIGHT_TRAILING_STOP_PCT,
 )
 
 def test_lot_amounts_sum_to_max():

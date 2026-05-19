@@ -22,5 +22,4 @@ class ExitReason(str, Enum):
     STOP_LOSS_HALF = "STOP_LOSS_HALF"        # 亏损≥-2.5%，减仓50%
     STOP_LOSS_CLEAR = "STOP_LOSS_CLEAR"      # 亏损≥-3.5%，全部清仓
     TREND_CLEAR = "TREND_CLEAR"              # 趋势转空，立即清仓
-    OVERNIGHT_TRAILING = "OVERNIGHT_TRAILING"  # 隔夜追踪止损
 
