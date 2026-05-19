@@ -30,7 +30,7 @@ class StrategyEngine:
         self._TAKE_PROFIT_COOLDOWN_MS = 5 * 60 * 1000  # 止盈后5分钟内不再止盈
 
         # V2 组合仓位
-        self._portfolio: PortfolioPosition = PortfolioPosition(round_id=0)
+        self._portfolio: PortfolioPosition = PortfolioPosition()
         self._v2_last_buy_price: Optional[float] = None  # 上次买入价，用于加仓间距判断
         self._v2_round_counter: int = 0                   # 自增轮次ID
         self._load_portfolio_v2()  # 从数据库恢复未平仓的V2持仓
@@ -268,7 +268,7 @@ class StrategyEngine:
 
         if self._portfolio.is_empty():
             self._v2_round_counter += 1
-            self._portfolio = PortfolioPosition(round_id=self._v2_round_counter)
+            self._portfolio = PortfolioPosition()
             self._save_position_open_v2(ts, ctx.price, signal.amount_g)
 
         lot = self._portfolio.add_lot(
@@ -347,7 +347,7 @@ class StrategyEngine:
         if not lots:
             return
 
-        self._portfolio = PortfolioPosition(round_id=round_id)
+        self._portfolio = PortfolioPosition()
         for lot in lots:
             self._portfolio.add_lot(
                 lot_index=lot['lot_index'],
@@ -376,7 +376,7 @@ class StrategyEngine:
             )
 
     def _save_lot_v2(self, lot) -> None:
-        """在 ccccccccccccccccccccccccccccccccccccccccccccccccccc 表记录批次买入"""
+        """在 position_lots 表记录批次买入（V2，待 Task4 删除）。"""
         with get_conn() as conn:
             conn.execute(
                 """INSERT INTO position_lots
