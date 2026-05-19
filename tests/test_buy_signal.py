@@ -135,3 +135,33 @@ def test_no_buy_on_trend_down():
     pos = empty_pos()
     signal = check_buy_signal(ctx, pos, circuit_breaker_active=False)
     assert signal is None
+
+
+def test_add_refills_partial_position_to_50g():
+    """持仓低于50g时，加仓补到50g。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 20.0)
+    ctx = make_context(price=994.0, bb_lower=1001.0, atr_5m=5.0)
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False, last_buy_price=1000.0)
+    assert signal is not None
+    assert signal.amount_g == pytest.approx(30.0)
+
+
+def test_add_refills_50_to_80g():
+    """持仓50g到80g之间时，加仓补到80g。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 50.0)
+    ctx = make_context(price=994.0, bb_lower=1001.0, atr_5m=5.0)
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False, last_buy_price=1000.0)
+    assert signal is not None
+    assert signal.amount_g == pytest.approx(30.0)
+
+
+def test_add_refills_80_to_100g():
+    """持仓80g到100g之间时，加仓补到100g。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 80.0)
+    ctx = make_context(price=994.0, bb_lower=1001.0, atr_5m=5.0)
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False, last_buy_price=1000.0)
+    assert signal is not None
+    assert signal.amount_g == pytest.approx(20.0)

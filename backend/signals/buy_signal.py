@@ -87,6 +87,32 @@ def check_buy_signal(
     return None
 
 
+def _next_target_amount_g(current_amount_g: float) -> float | None:
+    """
+    根据当前持仓克数返回下一档目标持仓量。超过最大仓位返回 None。
+
+    参数：
+        current_amount_g: 当前持仓克数
+
+    返回：
+        下一档目标克数（LOT1=50g、LOT1+LOT2=80g、T_MAX=100g），或 None（已满仓）
+    """
+    # 空仓或不足第1批：目标第1批（LOT1_AMOUNT_G）
+    if current_amount_g <= 0:
+        return config.LOT1_AMOUNT_G
+    # 持仓未到第1批目标：补到第1批
+    if current_amount_g < config.LOT1_AMOUNT_G:
+        return config.LOT1_AMOUNT_G
+    # 持仓第1批但未到第1+2批：目标第1+2批
+    if current_amount_g < config.LOT1_AMOUNT_G + config.LOT2_AMOUNT_G:
+        return config.LOT1_AMOUNT_G + config.LOT2_AMOUNT_G
+    # 持仓第1+2批但未满仓：目标最大仓位
+    if current_amount_g < config.T_MAX_AMOUNT_G:
+        return config.T_MAX_AMOUNT_G
+    # 已满仓，不再加仓
+    return None
+
+
 def _check_oscillation_buy(
     ctx,
     portfolio,
@@ -123,22 +149,19 @@ def _check_oscillation_buy(
 
     required_drop = config.ATR_ADD_LOT_MULTIPLIER * atr
     if price <= last_buy_price - required_drop:
-        # V3: 根据持仓量判断当前批次（LOT1=50g, LOT2=30g, LOT3=20g）
-        amount_g = portfolio.total_amount_g
-        if amount_g < config.LOT1_AMOUNT_G + config.LOT2_AMOUNT_G:
-            # 持仓 < 80g，说明只有第1批，触发第2批
-            return BuySignalV2(
-                signal_type=SignalType.ADD_LOT,
-                amount_g=config.LOT2_AMOUNT_G,
-                reason=f"价格从{last_buy_price:.2f}跌{required_drop:.2f}，第2批加仓",
-            )
-        elif amount_g < config.T_MAX_AMOUNT_G:
-            # 持仓 < 100g，说明有第1+2批，触发第3批
-            return BuySignalV2(
-                signal_type=SignalType.ADD_LOT,
-                amount_g=config.LOT3_AMOUNT_G,
-                reason=f"价格从{last_buy_price:.2f}跌{required_drop:.2f}，第3批加仓",
-            )
+        # 根据当前持仓量确定目标档位，计算本次加仓克数
+        target_amount_g = _next_target_amount_g(portfolio.total_amount_g)
+        if target_amount_g is None:
+            return None
+        # 本次加仓克数 = 目标档位 − 当前持仓
+        amount_g = round(target_amount_g - portfolio.total_amount_g, 4)
+        # 根据当前持仓确定信号类型（防御性处理：有仓位才用 ADD_LOT）
+        sig_type = SignalType.BUY if portfolio.is_empty() else SignalType.ADD_LOT
+        return BuySignalV2(
+            signal_type=sig_type,
+            amount_g=amount_g,
+            reason=f"价格从{last_buy_price:.2f}跌{required_drop:.2f}，补仓至{target_amount_g:.0f}g",
+        )
 
     return None
 
