@@ -99,7 +99,7 @@ export function PositionTable() {
       render: (v: number) => <span style={{ color: '#c8d8e8', fontSize: 11 }}>{v}g</span>
     },
     {
-      title: '盈亏',
+      title: '浮盈',
       key: 'pnl',
       width: 150,
       render: (_: unknown, row: BaseHolding) => {
@@ -219,7 +219,7 @@ export function PositionTable() {
                   <span style={{ color: '#f0d060', fontFamily: "'Courier New', monospace" }}>{totalMarketValue.toFixed(0)}</span>
                 </span>
                 <span style={{ color: totalPnl >= 0 ? '#ff4d4f' : '#00ff88', fontFamily: "'Courier New', monospace" }}>
-                  <span style={{ color: '#4a6a8a' }}>盈亏 </span>
+                  <span style={{ color: '#4a6a8a' }}>浮盈 </span>
                   {totalPnl >= 0 ? '+' : ''}
                   {totalPnl.toFixed(2)}
                   <span style={{ fontSize: 10, marginLeft: 3, opacity: 0.85 }}>
