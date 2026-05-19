@@ -15,11 +15,11 @@ const TYPE_COLOR: Record<string, string> = {
   STOP_LOSS: '#ff4d4f',
   STOP_LOSS_HALF: '#f0a500',
   STOP_LOSS_CLEAR: '#ff4d4f',
-  TREND_CLEAR: '#ff4d4f',
+  TREND_CLEAR: '#ff4d4f'
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  BUY: '买入',
+  BUY: '建仓',
   ADD_LOT: '加仓',
   TAKE_PROFIT: '止盈',
   TAKE_PROFIT_1: '止盈1',
@@ -28,7 +28,7 @@ const TYPE_LABEL: Record<string, string> = {
   STOP_LOSS: '止损',
   STOP_LOSS_HALF: '减仓',
   STOP_LOSS_CLEAR: '清仓',
-  TREND_CLEAR: '趋势清仓',
+  TREND_CLEAR: '趋势清仓'
 }
 
 export function SignalPanel() {
@@ -88,19 +88,30 @@ export function SignalPanel() {
       width: 70,
       render: (v: number | null | undefined, record: Signal) => {
         // 只有卖出类型的信号才显示盈亏
-        const isSell = ['TAKE_PROFIT', 'TAKE_PROFIT_1', 'TAKE_PROFIT_2', 'TAKE_PROFIT_TRAILING',
-                        'STOP_LOSS', 'STOP_LOSS_HALF', 'STOP_LOSS_CLEAR', 'TREND_CLEAR'].includes(record.type)
+        const isSell = [
+          'TAKE_PROFIT',
+          'TAKE_PROFIT_1',
+          'TAKE_PROFIT_2',
+          'TAKE_PROFIT_TRAILING',
+          'STOP_LOSS',
+          'STOP_LOSS_HALF',
+          'STOP_LOSS_CLEAR',
+          'TREND_CLEAR'
+        ].includes(record.type)
         if (!isSell || v == null) return <span style={{ color: '#4a6a8a', fontSize: 11 }}>-</span>
-        const color = v >= 0 ? '#00ff88' : '#ff4d4f'
+        const color = v >= 0 ? '#ff4d4f' : '#00ff88'
         return (
-          <span style={{
-            color,
-            fontSize: 11,
-            fontWeight: 600,
-            fontFamily: "'Courier New', monospace",
-            textShadow: `0 0 4px ${color}44`
-          }}>
-            {v >= 0 ? '+' : ''}{v.toFixed(0)}
+          <span
+            style={{
+              color,
+              fontSize: 11,
+              fontWeight: 600,
+              fontFamily: "'Courier New', monospace",
+              textShadow: `0 0 4px ${color}44`
+            }}
+          >
+            {v >= 0 ? '+' : ''}
+            {v.toFixed(2)}
           </span>
         )
       }
@@ -155,15 +166,17 @@ export function SignalPanel() {
       </div>
       {/* T仓持仓状态行：显示持仓量、均价、浮盈浮亏 */}
       {portfolio && portfolio.total_amount_g > 0 && (
-        <div style={{
-          padding: '4px 10px',
-          fontSize: 11,
-          borderBottom: '1px solid #1a3a5c',
-          display: 'flex',
-          gap: 12,
-          color: '#6a8aaa',
-          background: '#0d1e38',
-        }}>
+        <div
+          style={{
+            padding: '4px 10px',
+            fontSize: 11,
+            borderBottom: '1px solid #1a3a5c',
+            display: 'flex',
+            gap: 12,
+            color: '#6a8aaa',
+            background: '#0d1e38'
+          }}
+        >
           <span>
             <span style={{ color: '#4a6a8a' }}>T仓 持仓 </span>
             <span style={{ color: '#c8d8e8', fontFamily: "'Courier New', monospace" }}>{portfolio.total_amount_g}g</span>
@@ -175,12 +188,15 @@ export function SignalPanel() {
           <span>
             {/* 浮盈为正显示绿色，为负显示红色 */}
             <span style={{ color: '#4a6a8a' }}>浮盈 </span>
-            <span style={{
-              color: (portfolio.pnl_yuan ?? 0) >= 0 ? '#00ff88' : '#ff4d4f',
-              fontFamily: "'Courier New', monospace"
-            }}>
-              {(portfolio.pnl_yuan ?? 0) >= 0 ? '+' : ''}{portfolio.pnl_yuan?.toFixed(0)}元
-              ({(portfolio.pnl_pct ?? 0) >= 0 ? '+' : ''}{((portfolio.pnl_pct ?? 0) * 100).toFixed(2)}%)
+            <span
+              style={{
+                color: (portfolio.pnl_yuan ?? 0) >= 0 ? '#00ff88' : '#ff4d4f',
+                fontFamily: "'Courier New', monospace"
+              }}
+            >
+              {(portfolio.pnl_yuan ?? 0) >= 0 ? '+' : ''}
+              {portfolio.pnl_yuan?.toFixed(0)}元 ({(portfolio.pnl_pct ?? 0) >= 0 ? '+' : ''}
+              {((portfolio.pnl_pct ?? 0) * 100).toFixed(2)}%)
             </span>
           </span>
         </div>

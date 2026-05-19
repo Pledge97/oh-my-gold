@@ -11,16 +11,7 @@ class MarketState(Enum):
 
 class SignalType(Enum):
     BUY         = "BUY"
-    TAKE_PROFIT = "TAKE_PROFIT"
-    STOP_LOSS   = "STOP_LOSS"
-    NONE        = "NONE"
     ADD_LOT     = "ADD_LOT"      # 加仓信号
-    STOP_ADD    = "STOP_ADD"     # 停止加仓信号
-
-
-class CloseType(Enum):
-    TAKE_PROFIT = "TAKE_PROFIT"
-    STOP_LOSS   = "STOP_LOSS"
 
 
 class ExitReason(str, Enum):
@@ -33,13 +24,3 @@ class ExitReason(str, Enum):
     TREND_CLEAR = "TREND_CLEAR"              # 趋势转空，立即清仓
     OVERNIGHT_TRAILING = "OVERNIGHT_TRAILING"  # 隔夜追踪止损
 
-
-class LotStatus(str, Enum):
-    """单批次仓位状态"""
-    OPEN = "OPEN"
-    CLOSED = "CLOSED"
-
-
-class TradingMode(Enum):
-    OSCILLATION = "OSCILLATION"
-    TREND       = "TREND"
