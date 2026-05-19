@@ -8,27 +8,25 @@ const TABLE_SCROLL_HEIGHT = '100%'
 const TYPE_COLOR: Record<string, string> = {
   BUY: '#ff4d4f',
   ADD_LOT: '#ff8c00',
-  TAKE_PROFIT: '#00d4ff',
   TAKE_PROFIT_1: '#00d4ff',
   TAKE_PROFIT_2: '#00d4ff',
   TAKE_PROFIT_TRAILING: '#00d4ff',
-  STOP_LOSS: '#ff4d4f',
   STOP_LOSS_HALF: '#f0a500',
   STOP_LOSS_CLEAR: '#ff4d4f',
-  TREND_CLEAR: '#ff4d4f'
+  TREND_CLEAR: '#ff4d4f',
+  OVERNIGHT_TRAILING: '#00d4ff'
 }
 
 const TYPE_LABEL: Record<string, string> = {
   BUY: '建仓',
   ADD_LOT: '加仓',
-  TAKE_PROFIT: '止盈',
   TAKE_PROFIT_1: '止盈1',
   TAKE_PROFIT_2: '止盈2',
   TAKE_PROFIT_TRAILING: '追踪止盈',
-  STOP_LOSS: '止损',
   STOP_LOSS_HALF: '减仓',
   STOP_LOSS_CLEAR: '清仓',
-  TREND_CLEAR: '趋势清仓'
+  TREND_CLEAR: '趋势清仓',
+  OVERNIGHT_TRAILING: '隔夜止损'
 }
 
 export function SignalPanel() {
@@ -89,14 +87,13 @@ export function SignalPanel() {
       render: (v: number | null | undefined, record: Signal) => {
         // 只有卖出类型的信号才显示盈亏
         const isSell = [
-          'TAKE_PROFIT',
           'TAKE_PROFIT_1',
           'TAKE_PROFIT_2',
           'TAKE_PROFIT_TRAILING',
-          'STOP_LOSS',
           'STOP_LOSS_HALF',
           'STOP_LOSS_CLEAR',
-          'TREND_CLEAR'
+          'TREND_CLEAR',
+          'OVERNIGHT_TRAILING'
         ].includes(record.type)
         if (!isSell || v == null) return <span style={{ color: '#4a6a8a', fontSize: 11 }}>-</span>
         const color = v >= 0 ? '#ff4d4f' : '#00ff88'
