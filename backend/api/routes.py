@@ -18,45 +18,6 @@ def get_signals(limit: int = 50):
     return [dict(r) for r in rows]
 
 
-@router.get("/positions")
-def get_positions(status: str = "OPEN", source: str = "all"):
-    with get_conn() as conn:
-        if source == "manual":
-            # 手动建仓：positions 表中没有对应 position_lots 记录的条目
-            rows = conn.execute(
-                "SELECT p.* FROM positions p "
-                "WHERE p.status=? AND NOT EXISTS "
-                "(SELECT 1 FROM position_lots l WHERE l.round_id=p.id) "
-                "ORDER BY p.open_ts DESC",
-                (status,)
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT * FROM positions WHERE status=? ORDER BY open_ts DESC", (status,)
-            ).fetchall()
-    return [dict(r) for r in rows]
-
-
-class ManualPositionIn(BaseModel):
-    amount_g: float
-    open_price: float
-    open_date: str  # YYYY-MM-DD
-
-
-@router.post("/positions")
-def create_position(body: ManualPositionIn):
-    dt = datetime.strptime(body.open_date, "%Y-%m-%d")
-    ts = int(dt.timestamp() * 1000)
-    with get_conn() as conn:
-        cur = conn.execute(
-            "INSERT INTO positions (open_ts, open_price, amount_g, status) VALUES (?, ?, ?, 'OPEN')",
-            (ts, body.open_price, body.amount_g),
-        )
-        pos_id = cur.lastrowid
-    return {"id": pos_id, "open_ts": ts, "open_price": body.open_price,
-            "amount_g": body.amount_g, "status": "OPEN"}
-
-
 class BaseHoldingIn(BaseModel):
     """底仓建仓请求体。"""
     amount_g: float
@@ -242,33 +203,6 @@ def get_daily_prices(
             "ORDER BY date DESC LIMIT ?", (days,)
         ).fetchall()
         return list(reversed([dict(r) for r in rows]))
-
-
-class ClosePositionIn(BaseModel):
-    close_price: float
-    close_date: str  # YYYY-MM-DD HH:MM
-
-
-@router.post("/positions/{pos_id}/close")
-def close_position(pos_id: int, body: ClosePositionIn):
-    dt = datetime.strptime(body.close_date, "%Y-%m-%d %H:%M")
-    close_ts = int(dt.timestamp() * 1000)
-    with get_conn() as conn:
-        row = conn.execute(
-            "SELECT open_price, amount_g FROM positions WHERE id=? AND status='OPEN'",
-            (pos_id,)
-        ).fetchone()
-        if not row:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=404, detail="持仓不存在或已平仓")
-        fee = body.close_price * row["amount_g"] * config.SELL_FEE_RATE
-        pnl_yuan = (body.close_price - row["open_price"]) * row["amount_g"] - fee
-        conn.execute(
-            """UPDATE positions SET status='CLOSED', close_ts=?, close_price=?,
-               close_type='MANUAL', pnl_yuan=? WHERE id=?""",
-            (close_ts, body.close_price, round(pnl_yuan, 2), pos_id)
-        )
-    return {"id": pos_id, "pnl_yuan": round(pnl_yuan, 2), "status": "CLOSED"}
 
 
 @router.get("/circuit-breaker")
