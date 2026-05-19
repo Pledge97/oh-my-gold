@@ -58,7 +58,7 @@ def test_tp1_only_fires_once():
 
 
 def test_tp2_triggers_at_1_2_pct():
-    """扣除0.4%手续费后净盈利达到1.2%时触发第2次止盈，卖出20%"""
+    """扣除0.4%手续费后净盈利达到1.2%时触发第2次止盈，卖出初始仓位的20%（剩余的50%）"""
     pos = make_portfolio(avg_cost=1000.0, total_g=50.0)
     pos.tp1_done = True
     # 触发价 = 1000 * 1.012 / 0.996 ≈ 1016.07
@@ -66,7 +66,8 @@ def test_tp2_triggers_at_1_2_pct():
     signal = check_sell_signal(pos, ctx)
     assert signal is not None
     assert signal.exit_reason == ExitReason.TAKE_PROFIT_2
-    assert signal.sell_ratio == pytest.approx(0.20)
+    # TP1已卖60%，剩余40%，要卖初始的20%需要卖剩余的50% (0.2/0.4=0.5)
+    assert signal.sell_ratio == pytest.approx(0.50)
 
 
 def test_tp2_requires_tp1_done():

@@ -86,12 +86,14 @@ def check_sell_signal(
             reason=f"T仓整体盈利{pnl:.2%}≥{config.TAKE_PROFIT_1_PCT:.2%}，卖出60%",
         )
 
-    # 第2次止盈：tp1已执行且盈利≥1.2%，卖出20%
+    # 第2次止盈：tp1已执行且盈利≥1.2%，卖出初始仓位的20%
+    # TP1已卖60%，剩余40%，要卖初始的20%需要卖剩余的50% (20%/40%=0.5)
     if portfolio.tp1_done and not portfolio.tp2_done and pnl >= config.TAKE_PROFIT_2_PCT:
+        actual_sell_ratio = config.TAKE_PROFIT_2_SELL_RATIO / (1 - config.TAKE_PROFIT_1_SELL_RATIO)
         return SellSignalV2(
             exit_reason=ExitReason.TAKE_PROFIT_2,
-            sell_ratio=config.TAKE_PROFIT_2_SELL_RATIO,
-            reason=f"T仓整体盈利{pnl:.2%}≥{config.TAKE_PROFIT_2_PCT:.2%}，卖出20%",
+            sell_ratio=actual_sell_ratio,
+            reason=f"T仓整体盈利{pnl:.2%}≥{config.TAKE_PROFIT_2_PCT:.2%}，卖出初始仓位的20%",
         )
 
     # 第3次止盈（追踪）：tp1和tp2均已执行，金价跌破5分钟EMA20，清空剩余20%
