@@ -2,7 +2,7 @@
 from backend.core.context import MarketContext
 from backend.core.enums import CloseType, ExitReason
 from backend.risk.position import PositionManager, Position
-from backend.risk.portfolio import PortfolioPosition
+from backend.risk.portfolio import PortfolioPosition, load_portfolio_from_signals, calc_sell_pnl
 from backend.risk.circuit_breaker import CircuitBreaker
 from backend.risk.risk_manager import RiskManager
 from backend.signals.regime_signal import detect_regime
@@ -29,11 +29,9 @@ class StrategyEngine:
         self._BUY_COOLDOWN_MS = 5 * 60 * 1000           # 每次买入后5分钟内不再买
         self._TAKE_PROFIT_COOLDOWN_MS = 5 * 60 * 1000  # 止盈后5分钟内不再止盈
 
-        # V2 组合仓位
+        # V3 组合仓位（从 signals 恢复）
         self._portfolio: PortfolioPosition = PortfolioPosition()
-        self._v2_last_buy_price: Optional[float] = None  # 上次买入价，用于加仓间距判断
-        self._v2_round_counter: int = 0                   # 自增轮次ID
-        self._load_portfolio_v2()  # 从数据库恢复未平仓的V2持仓
+        self._load_portfolio_v3()  # 从 signals 表恢复 V3 T仓状态
 
     def on_tick(self, ctx: MarketContext) -> dict:
         # 1. 更新市场状态
@@ -146,13 +144,28 @@ class StrategyEngine:
         }
 
     def _save_signal(self, ctx: MarketContext, sig_type: str,
-                     amount_g: float, reason: str) -> None:
+                     amount_g: float, reason: str, pnl_yuan: float | None = None) -> None:
+        """保存策略信号，卖出信号可记录本次已实现盈亏。"""
         with get_conn() as conn:
-            conn.execute(
-                "INSERT INTO signals (ts, type, mode, price, amount_g, reason) VALUES (?,?,?,?,?,?)",
-                (int(time.time() * 1000), sig_type, ctx.market_state.value,
-                 ctx.price, amount_g, reason),
+            self._save_signal_raw(
+                conn=conn,
+                ts=ctx.ts or int(time.time() * 1000),
+                sig_type=sig_type,
+                mode=ctx.market_state.value,
+                price=ctx.price,
+                amount_g=amount_g,
+                reason=reason,
+                pnl_yuan=pnl_yuan,
             )
+
+    def _save_signal_raw(self, conn, ts: int, sig_type: str, mode: str, price: float,
+                         amount_g: float, reason: str, pnl_yuan: float | None = None) -> None:
+        """底层信号写入方法，方便测试直接验证。"""
+        conn.execute(
+            "INSERT INTO signals (ts, type, mode, price, amount_g, reason, pnl_yuan) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (ts, sig_type, mode, price, amount_g, reason, pnl_yuan),
+        )
 
     # ── V2 组合仓位方法 ────────────────────────────────────────
 
@@ -173,13 +186,13 @@ class StrategyEngine:
         # 4. 止损检查（优先级最高，熔断时也执行）
         exit_sig = check_exit_signal(self._portfolio, ctx.price, ctx)
         if exit_sig:
-            signal_out = self._execute_exit_v2(exit_sig, ctx)
+            signal_out = self._execute_exit_v3(exit_sig, ctx)
 
         # 5. 止盈检查
         if not self._portfolio.is_empty():
             sell_sig = check_sell_signal(self._portfolio, ctx)
             if sell_sig:
-                signal_out = self._execute_sell_v2(sell_sig, ctx)
+                signal_out = self._execute_sell_v3(sell_sig, ctx)
 
         # 6. 建仓/加仓检查（熔断中跳过；本 tick 已触发清仓时跳过）
         already_cleared = signal_out is not None and self._portfolio.is_empty()
@@ -187,10 +200,10 @@ class StrategyEngine:
             buy_sig = check_buy_signal(
                 ctx, self._portfolio,
                 circuit_breaker_active=self.cb.is_active,
-                last_buy_price=self._v2_last_buy_price,
+                last_buy_price=self._portfolio.last_buy_price,
             )
             if buy_sig:
-                signal_out = self._execute_buy_v2(buy_sig, ctx)
+                signal_out = self._execute_buy_v3(buy_sig, ctx)
 
         return {
             "ts": int(time.time() * 1000),
@@ -215,184 +228,88 @@ class StrategyEngine:
         }
 
     def _portfolio_snapshot(self, price: float, pnl_pct: float, ctx) -> dict:
-        """生成 portfolio 字段的 dict 快照，含下次触发节点"""
+        """生成 WebSocket portfolio 字段快照，含下次触发节点。"""
         avg_cost = self._portfolio.avg_cost
         atr = max(ctx.indicators.atr_5m, 5.0)  # 最小5元，避免间距过小
         has_position = not self._portfolio.is_empty()
 
-        # 下次买入触发价
+        # 下次买入触发价：空仓用布林下轨，有仓用 last_buy_price - ATR 间距
         if not has_position:
             next_buy = ctx.indicators.bb_lower or None
-        elif self._portfolio.total_amount_g < config.T_MAX_AMOUNT_G and atr:
-            last_lot = self._portfolio.lots[-1] if self._portfolio.lots else None
-            next_buy = round(last_lot.open_price - config.ATR_ADD_LOT_MULTIPLIER * atr, 2) if last_lot else None
+        elif self._portfolio.total_amount_g < config.T_MAX_AMOUNT_G and atr and self._portfolio.last_buy_price:
+            next_buy = round(self._portfolio.last_buy_price - config.ATR_ADD_LOT_MULTIPLIER * atr, 2)
         else:
             next_buy = None  # 满仓
 
-        # 止盈触发价：avg_cost × 1.006 / 0.996（扣手续费后净盈0.6%）
+        # 止盈触发价：avg_cost × (1 + 止盈率) / (1 - 手续费率)，扣手续费后净盈达标
         next_tp = round(avg_cost * (1 + config.TAKE_PROFIT_1_PCT) / (1 - config.SELL_FEE_RATE), 2) if has_position else None
 
-        # 止损触发价：avg_cost × 0.975 / 0.996（扣手续费后净亏-2.5%，强制减半）
+        # 止损触发价：avg_cost × (1 + 亏损阈值) / (1 - 手续费率)，扣手续费后净亏达标
         next_stop = round(avg_cost * (1 + config.FORCE_HALF_LOSS_PCT) / (1 - config.SELL_FEE_RATE), 2) if has_position else None
 
         return {
-            "round_id": self._portfolio.round_id,
+            "round_counter": self._portfolio.round_counter,
             "total_amount_g": self._portfolio.total_amount_g,
-            "total_cost": self._portfolio.total_cost,
             "avg_cost": avg_cost,
             "pnl_pct": pnl_pct,
-            "pnl_yuan": round(
-                price * self._portfolio.total_amount_g - self._portfolio.total_cost, 2
-            ),
+            "pnl_yuan": round(price * self._portfolio.total_amount_g * (1 - config.SELL_FEE_RATE) - self._portfolio.total_cost, 2),
             "tp1_done": self._portfolio.tp1_done,
             "tp2_done": self._portfolio.tp2_done,
             "next_buy": next_buy,
             "next_tp": next_tp,
             "next_stop": next_stop,
-            "lots": [
-                {
-                    "lot_index": lot.lot_index,
-                    "open_price": lot.open_price,
-                    "amount_g": lot.amount_g,
-                    "open_ts": lot.open_ts,
-                    "status": lot.status.value,
-                }
-                for lot in self._portfolio.lots
-                if lot.status.value == "OPEN"
-            ],
         }
 
-    def _execute_buy_v2(self, signal, ctx: MarketContext) -> dict:
-        """执行建仓/加仓"""
-        ts = ctx.ts or int(time.time() * 1000)
-
+    def _execute_buy_v3(self, signal, ctx: MarketContext) -> dict:
+        """执行建仓/加仓，只写 signals 表。"""
         if self._portfolio.is_empty():
-            self._v2_round_counter += 1
-            self._portfolio = PortfolioPosition()
-            self._save_position_open_v2(ts, ctx.price, signal.amount_g)
-
-        lot = self._portfolio.add_lot(
-            lot_index=self._portfolio.lot_count,
-            price=ctx.price,
-            amount_g=signal.amount_g,
-            ts=ts,
-        )
-        self._v2_last_buy_price = ctx.price
-        self._save_lot_v2(lot)
-        # 加仓后同步更新 positions 表总持仓量（初始建仓时已在 INSERT 中写入，无需重复）
-        if self._portfolio.lot_count > 1:
-            self._update_position_amount_v2()
+            self._portfolio.round_counter += 1
+        self._portfolio.buy(ctx.price, signal.amount_g)
         self._save_signal(ctx, signal.signal_type.value, signal.amount_g, signal.reason)
-        return {"type": signal.signal_type.value, "amount_g": signal.amount_g,
-                "reason": signal.reason}
+        return {"type": signal.signal_type.value, "amount_g": signal.amount_g, "reason": signal.reason}
 
-    def _execute_sell_v2(self, signal, ctx: MarketContext) -> dict:
-        """执行止盈减仓/清仓"""
-        ts = ctx.ts or int(time.time() * 1000)
-
-        if signal.sell_ratio >= 1.0:
-            sold_g = self._portfolio.clear(ctx.price, ts)
-        else:
-            sold_g = self._portfolio.reduce(signal.sell_ratio, ctx.price, ts)
+    def _execute_sell_v3(self, signal, ctx: MarketContext) -> dict:
+        """执行止盈减仓/清仓，写 signals 并记录 pnl_yuan。"""
+        avg_cost = self._portfolio.avg_cost  # 卖出前取均价
+        sold_g = (
+            self._portfolio.total_amount_g * signal.sell_ratio
+            if signal.sell_ratio < 1.0
+            else self._portfolio.total_amount_g
+        )
+        sold_g = round(sold_g, 4)
+        pnl_yuan = calc_sell_pnl(sold_g, ctx.price, avg_cost, config.SELL_FEE_RATE)
+        self._portfolio.sell(ctx.price, sold_g)
 
         if signal.exit_reason == ExitReason.TAKE_PROFIT_1:
-            self._portfolio.mark_tp1()
+            self._portfolio.tp1_done = True
         elif signal.exit_reason == ExitReason.TAKE_PROFIT_2:
-            self._portfolio.mark_tp2()
+            self._portfolio.tp2_done = True
 
-        self._save_signal(ctx, signal.exit_reason.value, sold_g, signal.reason)
-        if self._portfolio.is_empty():
-            self._save_position_close_v2(ctx.price, ts, signal.exit_reason.value)
-            self._v2_last_buy_price = None
+        self._save_signal(ctx, signal.exit_reason.value, sold_g, signal.reason, pnl_yuan=round(pnl_yuan, 2))
         return {"type": signal.exit_reason.value, "amount_g": sold_g, "reason": signal.reason}
 
-    def _execute_exit_v2(self, signal, ctx: MarketContext) -> dict:
-        """执行止损减仓/清仓"""
-        ts = ctx.ts or int(time.time() * 1000)
-
-        if signal.sell_ratio >= 1.0:
-            sold_g = self._portfolio.clear(ctx.price, ts)
-        else:
-            sold_g = self._portfolio.reduce(signal.sell_ratio, ctx.price, ts)
-
-        self._save_signal(ctx, signal.exit_reason.value, sold_g, signal.reason)
-        if self._portfolio.is_empty():
-            self._save_position_close_v2(ctx.price, ts, signal.exit_reason.value)
-            self._v2_last_buy_price = None
+    def _execute_exit_v3(self, signal, ctx: MarketContext) -> dict:
+        """执行止损减仓/清仓，写 signals 并记录 pnl_yuan。"""
+        avg_cost = self._portfolio.avg_cost  # 卖出前取均价
+        sold_g = (
+            self._portfolio.total_amount_g * signal.sell_ratio
+            if signal.sell_ratio < 1.0
+            else self._portfolio.total_amount_g
+        )
+        sold_g = round(sold_g, 4)
+        pnl_yuan = calc_sell_pnl(sold_g, ctx.price, avg_cost, config.SELL_FEE_RATE)
+        self._portfolio.sell(ctx.price, sold_g)
+        self._save_signal(ctx, signal.exit_reason.value, sold_g, signal.reason, pnl_yuan=round(pnl_yuan, 2))
         return {"type": signal.exit_reason.value, "amount_g": sold_g, "reason": signal.reason}
 
-    def _load_portfolio_v2(self) -> None:
-        """服务启动时从数据库恢复未平仓的V2持仓状态"""
+    def _load_portfolio_v3(self) -> None:
+        """服务启动时从 signals 恢复 V3 T仓状态。"""
         with get_conn() as conn:
-            # 找最新的V2持仓：position_lots 表中有对应 round_id 的 OPEN positions
-            row = conn.execute("""
-                SELECT p.id, p.open_ts FROM positions p
-                WHERE p.status = 'OPEN'
-                  AND EXISTS (SELECT 1 FROM position_lots l WHERE l.round_id = p.id)
-                ORDER BY p.open_ts DESC LIMIT 1
-            """).fetchone()
-            if not row:
-                return
+            self._portfolio = load_portfolio_from_signals(conn)
+            # 已完成全清仓的轮次数量作为 round_counter
+            row = conn.execute(
+                "SELECT COUNT(*) cnt FROM signals WHERE type IN (?,?,?)",
+                ("STOP_LOSS_CLEAR", "TREND_CLEAR", "TAKE_PROFIT_TRAILING"),
+            ).fetchone()
+            self._portfolio.round_counter = row["cnt"] or 0
 
-            round_id = row['id']
-            self._v2_round_counter = round_id
-
-            lots = conn.execute("""
-                SELECT lot_index, open_price, amount_g, open_ts
-                FROM position_lots
-                WHERE round_id = ? AND status = 'OPEN'
-                ORDER BY open_ts ASC
-            """, (round_id,)).fetchall()
-
-        if not lots:
-            return
-
-        self._portfolio = PortfolioPosition()
-        for lot in lots:
-            self._portfolio.add_lot(
-                lot_index=lot['lot_index'],
-                price=lot['open_price'],
-                amount_g=lot['amount_g'],
-                ts=lot['open_ts'],
-            )
-        # 恢复上次买入价（最后一批的买入价，用于加仓间距判断）
-        self._v2_last_buy_price = lots[-1]['open_price']
-
-    def _save_position_open_v2(self, ts: int, open_price: float, amount_g: float) -> None:
-        """在 positions 表创建新轮次记录，写入第1批的真实价格和克数"""
-        with get_conn() as conn:
-            cur = conn.execute(
-                "INSERT INTO positions (open_ts, open_price, amount_g, status) VALUES (?, ?, ?, 'OPEN')",
-                (ts, open_price, amount_g),
-            )
-            self._portfolio.round_id = cur.lastrowid
-
-    def _update_position_amount_v2(self) -> None:
-        """加仓后同步更新 positions 表的总持仓量"""
-        with get_conn() as conn:
-            conn.execute(
-                "UPDATE positions SET amount_g=? WHERE id=?",
-                (self._portfolio.total_amount_g, self._portfolio.round_id),
-            )
-
-    def _save_lot_v2(self, lot) -> None:
-        """在 position_lots 表记录批次买入（V2，待 Task4 删除）。"""
-        with get_conn() as conn:
-            conn.execute(
-                """INSERT INTO position_lots
-                   (round_id, lot_index, open_ts, open_price, amount_g, status)
-                   VALUES (?, ?, ?, ?, ?, 'OPEN')""",
-                (self._portfolio.round_id, lot.lot_index,
-                 lot.open_ts, lot.open_price, lot.amount_g),
-            )
-
-    def _save_position_close_v2(self, price: float, ts: int, reason: str) -> None:
-        """更新 positions 表关闭本轮记录，使用累计已实现盈亏"""
-        pnl_yuan = self._portfolio.realized_pnl
-        with get_conn() as conn:
-            conn.execute(
-                """UPDATE positions SET status='CLOSED', close_ts=?, pnl_yuan=?,
-                   close_type=? WHERE id=?""",
-                (ts, round(pnl_yuan, 2),
-                 reason, self._portfolio.round_id),
-            )
