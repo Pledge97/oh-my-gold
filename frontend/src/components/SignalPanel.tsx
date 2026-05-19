@@ -82,6 +82,30 @@ export function SignalPanel() {
       render: (v: number) => <span style={{ color: '#c8d8e8', fontSize: 11 }}>{v}g</span>
     },
     {
+      title: '盈亏',
+      dataIndex: 'pnl_yuan',
+      key: 'pnl_yuan',
+      width: 70,
+      render: (v: number | null | undefined, record: Signal) => {
+        // 只有卖出类型的信号才显示盈亏
+        const isSell = ['TAKE_PROFIT', 'TAKE_PROFIT_1', 'TAKE_PROFIT_2', 'TAKE_PROFIT_TRAILING',
+                        'STOP_LOSS', 'STOP_LOSS_HALF', 'STOP_LOSS_CLEAR', 'TREND_CLEAR'].includes(record.type)
+        if (!isSell || v == null) return <span style={{ color: '#4a6a8a', fontSize: 11 }}>-</span>
+        const color = v >= 0 ? '#00ff88' : '#ff4d4f'
+        return (
+          <span style={{
+            color,
+            fontSize: 11,
+            fontWeight: 600,
+            fontFamily: "'Courier New', monospace",
+            textShadow: `0 0 4px ${color}44`
+          }}>
+            {v >= 0 ? '+' : ''}{v.toFixed(0)}
+          </span>
+        )
+      }
+    },
+    {
       title: '原因',
       dataIndex: 'reason',
       key: 'reason',
