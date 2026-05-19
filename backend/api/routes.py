@@ -139,14 +139,19 @@ def get_performance():
     t_pnl = t_pnl_row["total"] or 0.0
     base_pnl = base_pnl_row["total"] or 0.0
 
+    win_pnls = [p for p in rounds_pnl if p > 0]
+    loss_pnls = [p for p in rounds_pnl if p <= 0]
+    avg_win = sum(win_pnls) / len(win_pnls) if win_pnls else 0.0
+    avg_loss = sum(loss_pnls) / len(loss_pnls) if loss_pnls else 0.0
+
     return {
         "total_trades": cnt_row["cnt"] or 0,
         "total_pnl_yuan": round(t_pnl, 2),
         "cumulative_pnl_yuan": round(t_pnl + base_pnl, 2),
         "win_rate": round(wins / total_rounds, 4) if total_rounds else 0.0,
-        "avg_win_yuan": 0.0,   # 暂不计算，前端未使用
-        "avg_loss_yuan": 0.0,
-        "profit_loss_ratio": 0.0,
+        "avg_win_yuan": round(avg_win, 2),
+        "avg_loss_yuan": round(avg_loss, 2),
+        "profit_loss_ratio": round(abs(avg_win / avg_loss), 2) if avg_loss else 0.0,
     }
 
 
