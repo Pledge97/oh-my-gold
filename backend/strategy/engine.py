@@ -261,10 +261,13 @@ class StrategyEngine:
         }
 
     def _execute_buy_v3(self, signal, ctx: MarketContext) -> dict:
-        """执行建仓/加仓，只写 signals 表。"""
+        """执行建仓/加仓，只写 signals 表。加仓后重置止盈标记。"""
         if self._portfolio.is_empty():
             self._portfolio.round_counter += 1
         self._portfolio.buy(ctx.price, signal.amount_g)
+        # 加仓后重置止盈标记，下一次止盈从 TP1 开始
+        self._portfolio.tp1_done = False
+        self._portfolio.tp2_done = False
         self._save_signal(ctx, signal.signal_type.value, signal.amount_g, signal.reason)
         return {"type": signal.signal_type.value, "amount_g": signal.amount_g, "reason": signal.reason}
 
