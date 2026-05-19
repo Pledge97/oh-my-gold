@@ -1,6 +1,9 @@
 import { Typography } from 'antd'
 import { useStore } from '../store/useStore'
 
+/** 卖出手续费率（与后端 config.SELL_FEE_RATE 保持一致）。 */
+const SELL_FEE_RATE = 0.004
+
 const STATE_COLOR: Record<string, string> = {
   OSCILLATION: '#00d4ff',
   TREND_UP: '#00ff88',
@@ -16,22 +19,22 @@ const STATE_LABEL: Record<string, string> = {
 }
 
 export function StatusBar() {
-  const { price, marketState, cbActive, cbLevel, dbPositions, portfolio, performance, isMarketOpen } = useStore()
+  const { price, marketState, cbActive, cbLevel, baseHoldings, portfolio, performance, isMarketOpen } = useStore()
   const stateColor = STATE_COLOR[marketState] ?? '#888'
 
   // 底仓汇总
-  const baseCost = dbPositions.reduce((sum, pos) => sum + pos.open_price * pos.amount_g, 0)
-  const baseAmountG = dbPositions.reduce((sum, pos) => sum + pos.amount_g, 0)
+  const baseCost = baseHoldings.reduce((sum, pos) => sum + pos.open_price * pos.amount_g, 0)
+  const baseAmountG = baseHoldings.reduce((sum, pos) => sum + pos.amount_g, 0)
 
-  // T仓汇总（来自 WebSocket portfolio）
+  // T仓汇总（来自 WebSocket portfolio；total_cost 通过 avg_cost × amount_g 推导）
   const tAmountG = portfolio?.total_amount_g ?? 0
-  const tCost = portfolio?.total_cost ?? 0
+  const tCost = portfolio ? portfolio.avg_cost * portfolio.total_amount_g : 0
 
   // 合并
   const totalAmountG = baseAmountG + tAmountG
   const totalCost = baseCost + tCost
   const totalMarketValue = price ? price * totalAmountG : 0
-  const totalPnl = price ? totalMarketValue - price * totalAmountG * 0.004 - totalCost : 0
+  const totalPnl = price ? totalMarketValue - price * totalAmountG * SELL_FEE_RATE - totalCost : 0
   const totalPnlPct = totalCost > 0 ? totalPnl / totalCost : 0
 
   return (

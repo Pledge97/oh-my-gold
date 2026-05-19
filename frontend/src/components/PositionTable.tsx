@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Button, DatePicker, Form, InputNumber, Modal, Table } from 'antd'
 import { PlusOutlined, DollarOutlined, DeleteOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { useStore, DbPosition } from '../store/useStore'
-import { createPosition, closePosition, fetchPositions } from '../api/client'
+import { useStore, BaseHolding } from '../store/useStore'
+import { createBaseHolding, closeBaseHolding, fetchBaseHoldings } from '../api/client'
 
-const SELL_FEE = 0.004
+/** 卖出手续费率（与后端 config.SELL_FEE_RATE 保持一致）。 */
+const SELL_FEE_RATE = 0.004
+
 // Table body fills the remaining panel height so the header can stay fixed.
 const TABLE_SCROLL_HEIGHT = '100%'
 
@@ -24,13 +26,13 @@ interface SellFormValues {
 export function PositionTable() {
   const [buyOpen, setBuyOpen] = useState(false)
   const [sellOpen, setSellOpen] = useState(false)
-  const [sellingPos, setSellingPos] = useState<DbPosition | null>(null)
+  const [sellingPos, setSellingPos] = useState<BaseHolding | null>(null)
   const [loading, setLoading] = useState(false)
   const [buyForm] = Form.useForm<BuyFormValues>()
   const [sellForm] = Form.useForm<SellFormValues>()
-  const { lastSignalTs, dbPositions, setDbPositions, price } = useStore()
+  const { lastSignalTs, baseHoldings, setBaseHoldings, price } = useStore()
 
-  const reload = () => fetchPositions('OPEN', 'manual').then(setDbPositions)
+  const reload = () => fetchBaseHoldings('OPEN').then(setBaseHoldings)
 
   useEffect(() => {
     reload()
@@ -43,7 +45,7 @@ export function PositionTable() {
     const values = await buyForm.validateFields()
     setLoading(true)
     try {
-      await createPosition({
+      await createBaseHolding({
         amount_g: values.amount_g!,
         open_price: values.open_price,
         open_date: values.open_date.format('YYYY-MM-DD')
@@ -56,7 +58,7 @@ export function PositionTable() {
     }
   }
 
-  const openSell = (pos: DbPosition) => {
+  const openSell = (pos: BaseHolding) => {
     setSellingPos(pos)
     sellForm.setFieldsValue({
       close_price: price || pos.open_price,
@@ -70,7 +72,7 @@ export function PositionTable() {
     const values = await sellForm.validateFields()
     setLoading(true)
     try {
-      await closePosition(sellingPos.id, {
+      await closeBaseHolding(sellingPos.id, {
         close_price: values.close_price,
         close_date: values.close_date.format('YYYY-MM-DD HH:mm')
       })
@@ -100,9 +102,9 @@ export function PositionTable() {
       title: '盈亏',
       key: 'pnl',
       width: 150,
-      render: (_: unknown, row: DbPosition) => {
+      render: (_: unknown, row: BaseHolding) => {
         if (!price || price === 0) return <span style={{ color: '#2a4a6a' }}>—</span>
-        const pnl = (price - row.open_price) * row.amount_g - price * row.amount_g * SELL_FEE
+        const pnl = (price - row.open_price) * row.amount_g - price * row.amount_g * SELL_FEE_RATE
         const pct = pnl / (row.open_price * row.amount_g)
         const color = pnl >= 0 ? '#ff4d4f' : '#00ff88'
         return (
@@ -127,7 +129,7 @@ export function PositionTable() {
       title: '操作',
       key: 'action',
       width: 80,
-      render: (_: unknown, row: DbPosition) => (
+      render: (_: unknown, row: BaseHolding) => (
         <div style={{ display: 'flex', gap: 4 }}>
           <Button type="text" size="small" icon={<DollarOutlined />} onClick={() => openSell(row)} style={{ color: '#ff4d4f', padding: 0 }} title="卖出" />
           <Button
@@ -146,7 +148,7 @@ export function PositionTable() {
                 okType: 'danger',
                 cancelText: '取消',
                 onOk: async () => {
-                  await closePosition(row.id, {
+                  await closeBaseHolding(row.id, {
                     close_price: row.open_price,
                     close_date: dayjs().format('YYYY-MM-DD HH:mm')
                   })
@@ -172,10 +174,10 @@ export function PositionTable() {
 
   const inputStyle = { width: '100%', background: '#060b14', borderColor: '#1a3a5c', color: '#c8d8e8' }
 
-  const totalAmountG = dbPositions.reduce((sum, pos) => sum + pos.amount_g, 0)
+  const totalAmountG = baseHoldings.reduce((sum, pos) => sum + pos.amount_g, 0)
   const totalMarketValue = price ? price * totalAmountG : 0
-  const totalPnl = price ? dbPositions.reduce((sum, pos) => sum + (price - pos.open_price) * pos.amount_g - price * pos.amount_g * SELL_FEE, 0) : 0
-  const totalCost = dbPositions.reduce((sum, pos) => sum + pos.open_price * pos.amount_g, 0)
+  const totalPnl = price ? baseHoldings.reduce((sum, pos) => sum + (price - pos.open_price) * pos.amount_g - price * pos.amount_g * SELL_FEE_RATE, 0) : 0
+  const totalCost = baseHoldings.reduce((sum, pos) => sum + pos.open_price * pos.amount_g, 0)
   const totalPnlPct = totalCost > 0 ? totalPnl / totalCost : 0
 
   return (
@@ -203,7 +205,7 @@ export function PositionTable() {
             手动建仓
           </Button>
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 12, fontSize: 11 }}>
-            {dbPositions.length > 0 ? (
+            {baseHoldings.length > 0 ? (
               <>
                 <span>
                   <span style={{ color: '#4a6a8a' }}>持仓 </span>
@@ -232,8 +234,8 @@ export function PositionTable() {
           </span>
         </div>
         <div className="panel-table-body">
-          <Table<DbPosition>
-            dataSource={dbPositions}
+          <Table<BaseHolding>
+            dataSource={baseHoldings}
             columns={columns}
             rowKey="id"
             size="small"
@@ -245,6 +247,7 @@ export function PositionTable() {
           />
         </div>
       </div>
+
 
       {/* 建仓弹窗 */}
       <Modal
@@ -355,7 +358,7 @@ export function PositionTable() {
             price > 0 &&
             (() => {
               const cp = sellForm.getFieldValue('close_price') || price
-              const pnl = (cp - sellingPos.open_price) * sellingPos.amount_g - cp * sellingPos.amount_g * SELL_FEE
+              const pnl = (cp - sellingPos.open_price) * sellingPos.amount_g - cp * sellingPos.amount_g * SELL_FEE_RATE
               const color = pnl >= 0 ? '#ff4d4f' : '#00ff88'
               return (
                 <div style={{ padding: '8px 12px', background: '#060b14', border: '1px solid #1a3a5c', borderRadius: 4, fontSize: 12 }}>

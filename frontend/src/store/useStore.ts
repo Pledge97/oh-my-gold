@@ -1,12 +1,15 @@
 import { create } from 'zustand'
 import type { WsMessage, Signal, Performance, DailyPrice, PortfolioPosition } from '../types'
 
-export interface DbPosition {
+/** V3 底仓记录，对应后端 base_holdings 表。 */
+export interface BaseHolding {
   id: number
   open_ts: number
   open_price: number
   amount_g: number
   status: string
+  close_ts?: number | null
+  close_price?: number | null
   pnl_yuan: number | null
 }
 
@@ -20,8 +23,9 @@ interface Store {
   performance: Performance | null
   dailyPrices: DailyPrice[]
   lastSignalTs: number
-  dbPositions: DbPosition[]
-  /** V2 组合持仓，来自 WsMessage.portfolio */
+  /** V3 底仓列表，来自 /api/base_holdings */
+  baseHoldings: BaseHolding[]
+  /** V3 T仓组合快照，来自 WsMessage.portfolio */
   portfolio: PortfolioPosition | null
   isMarketOpen: boolean
   setWsMessage: (msg: WsMessage) => void
@@ -29,7 +33,7 @@ interface Store {
   setSignals: (s: Signal[]) => void
   setPerformance: (p: Performance) => void
   setDailyPrices: (d: DailyPrice[]) => void
-  setDbPositions: (p: DbPosition[]) => void
+  setBaseHoldings: (p: BaseHolding[]) => void
 }
 
 export const useStore = create<Store>((set) => ({
@@ -42,7 +46,7 @@ export const useStore = create<Store>((set) => ({
   performance: null,
   dailyPrices: [],
   lastSignalTs: 0,
-  dbPositions: [],
+  baseHoldings: [],
   portfolio: null,
   isMarketOpen: true,
   setWsMessage: (msg) => set((state) => {
@@ -57,12 +61,13 @@ export const useStore = create<Store>((set) => ({
       cbActive: msg.circuit_breaker.active,
       cbLevel: msg.circuit_breaker.level,
       lastSignalTs: msg.signal ? msg.ts : state.lastSignalTs,
-      portfolio: msg.portfolio,
+      portfolio: msg.portfolio ?? state.portfolio,
     }
   }),
   setSignals: (signals) => set({ signals }),
   setPrice: (price) => set({ price }),
   setPerformance: (performance) => set({ performance }),
   setDailyPrices: (dailyPrices) => set({ dailyPrices }),
-  setDbPositions: (dbPositions) => set({ dbPositions }),
+  setBaseHoldings: (baseHoldings) => set({ baseHoldings }),
 }))
+

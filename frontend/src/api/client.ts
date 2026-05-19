@@ -33,6 +33,7 @@ const getDefaultDailyRange = () => {
 export const fetchSignals = (limit = 50) =>
   fetch(`${BASE}/signals?limit=${limit}`).then(r => r.json())
 
+/** @deprecated V3 起底仓迁移至 fetchBaseHoldings，此函数仅供旧路由兼容保留 */
 export const fetchPositions = (status = 'OPEN', source = 'all') =>
   fetch(`${BASE}/positions?status=${status}&source=${source}`).then(r => r.json())
 
@@ -56,6 +57,7 @@ export const fetchTickPrices = (hours = 24) =>
 export const resumeCircuitBreaker = () =>
   fetch(`${BASE}/circuit-breaker/resume`, { method: 'POST' }).then(r => r.json())
 
+/** @deprecated V3 起请改用 createBaseHolding */
 export const createPosition = (body: { amount_g: number; open_price: number; open_date: string }) =>
   fetch(`${BASE}/positions`, {
     method: 'POST',
@@ -63,9 +65,46 @@ export const createPosition = (body: { amount_g: number; open_price: number; ope
     body: JSON.stringify(body),
   }).then(r => r.json())
 
+/** @deprecated V3 起请改用 closeBaseHolding */
 export const closePosition = (posId: number, body: { close_price: number; close_date: string }) =>
   fetch(`${BASE}/positions/${posId}/close`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   }).then(r => r.json())
+
+// ── V3 底仓 API ────────────────────────────────────────────────
+
+/**
+ * 查询底仓列表。
+ *
+ * @param status 持仓状态，默认 'OPEN'。
+ */
+export const fetchBaseHoldings = (status = 'OPEN') =>
+  fetch(`${BASE}/base_holdings?status=${status}`).then(r => r.json())
+
+/**
+ * 新建底仓记录。
+ *
+ * @param body 建仓参数：克数、买入价、买入日期（YYYY-MM-DD）。
+ */
+export const createBaseHolding = (body: { amount_g: number; open_price: number; open_date: string }) =>
+  fetch(`${BASE}/base_holdings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(r => r.json())
+
+/**
+ * 平仓底仓记录。
+ *
+ * @param posId 底仓 ID。
+ * @param body  平仓参数：平仓价、平仓时间（YYYY-MM-DD HH:mm）。
+ */
+export const closeBaseHolding = (posId: number, body: { close_price: number; close_date: string }) =>
+  fetch(`${BASE}/base_holdings/${posId}/close`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(r => r.json())
+

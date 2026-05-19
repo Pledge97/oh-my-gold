@@ -17,20 +17,10 @@ export interface Position {
   pnl_yuan: number
 }
 
-/** 单批次持仓明细 */
-export interface Lot {
-  lot_index: number
-  open_price: number
-  amount_g: number
-  open_ts: number
-  status: 'OPEN' | 'CLOSED'
-}
-
-/** T仓组合持仓（V2） */
+/** V3 T仓组合持仓（来自 WebSocket portfolio 字段，由 _portfolio_snapshot 生成） */
 export interface PortfolioPosition {
-  round_id: number
+  round_counter: number
   total_amount_g: number
-  total_cost: number
   avg_cost: number
   pnl_pct: number
   pnl_yuan: number
@@ -39,7 +29,6 @@ export interface PortfolioPosition {
   next_buy: number | null   // 下次买入触发价
   next_tp: number | null    // 下次止盈触发价
   next_stop: number | null  // 下次止损触发价
-  lots: Lot[]
 }
 
 export interface WsMessage {
@@ -50,8 +39,8 @@ export interface WsMessage {
   indicators: Indicators
   signal: { type: string; amount_g: number; reason: string } | null
   circuit_breaker: { active: boolean; level: number | null }
-  positions: Position[]
-  portfolio: PortfolioPosition
+  /** V3：T仓组合快照，由后端 on_tick_v2 推送 */
+  portfolio?: PortfolioPosition
 }
 
 export interface Signal {
@@ -62,6 +51,8 @@ export interface Signal {
   price: number
   amount_g: number
   reason: string
+  /** 卖出信号的本次已实现盈亏（元）；买入信号为 null */
+  pnl_yuan?: number | null
 }
 
 export interface Performance {
