@@ -118,6 +118,17 @@ export function StatusBar() {
 
       <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
 
+      {/* 持仓均价 */}
+      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
+        <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>持仓均价</span>
+        <span style={{ fontSize: 16, fontWeight: 700, color: '#c8d8e8', fontFamily: "'Courier New', monospace" }}>
+          {totalAmountG > 0 ? (totalCost / totalAmountG).toFixed(2) : '0.00'}
+          <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7 }}>元/g</span>
+        </span>
+      </div>
+
+      <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+
       {/* 持仓金额 */}
       <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
         <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>持仓金额</span>
@@ -153,18 +164,20 @@ export function StatusBar() {
       <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
 
       {/* 累计盈亏 */}
-      {performance && (() => {
-        const cum = performance.cumulative_pnl_yuan
-        const cumColor = cum >= 0 ? '#ff4d4f' : '#00ff88'
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
-            <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>累计盈亏</span>
-            <span style={{ fontSize: 16, fontWeight: 700, color: cumColor, textShadow: `0 0 8px ${cumColor}66`, fontFamily: "'Courier New', monospace" }}>
-              {cum >= 0 ? '+' : ''}{cum.toFixed(2)} 元
-            </span>
-          </div>
-        )
-      })()}
+      {performance &&
+        (() => {
+          const cum = performance.cumulative_pnl_yuan
+          const cumColor = cum >= 0 ? '#ff4d4f' : '#00ff88'
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
+              <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>累计盈亏</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: cumColor, textShadow: `0 0 8px ${cumColor}66`, fontFamily: "'Courier New', monospace" }}>
+                {cum >= 0 ? '+' : ''}
+                {cum.toFixed(2)} 元
+              </span>
+            </div>
+          )
+        })()}
 
       {/* 右侧：市场状态 + 时间 */}
       <div style={{ marginLeft: 'auto', textAlign: 'right', display: 'flex', alignItems: 'center', gap: 16 }}>
