@@ -129,6 +129,38 @@ export function SignalPanel() {
           ) : null}
         </span>
       </div>
+      {/* T仓持仓状态行：显示持仓量、均价、浮盈浮亏 */}
+      {portfolio && portfolio.total_amount_g > 0 && (
+        <div style={{
+          padding: '4px 10px',
+          fontSize: 11,
+          borderBottom: '1px solid #1a3a5c',
+          display: 'flex',
+          gap: 12,
+          color: '#6a8aaa',
+          background: '#0d1e38',
+        }}>
+          <span>
+            <span style={{ color: '#4a6a8a' }}>T仓 持仓 </span>
+            <span style={{ color: '#c8d8e8', fontFamily: "'Courier New', monospace" }}>{portfolio.total_amount_g}g</span>
+          </span>
+          <span>
+            <span style={{ color: '#4a6a8a' }}>均价 </span>
+            <span style={{ color: '#f0d060', fontFamily: "'Courier New', monospace" }}>¥{portfolio.avg_cost?.toFixed(2)}</span>
+          </span>
+          <span>
+            {/* 浮盈为正显示绿色，为负显示红色 */}
+            <span style={{ color: '#4a6a8a' }}>浮盈 </span>
+            <span style={{
+              color: (portfolio.pnl_yuan ?? 0) >= 0 ? '#00ff88' : '#ff4d4f',
+              fontFamily: "'Courier New', monospace"
+            }}>
+              {(portfolio.pnl_yuan ?? 0) >= 0 ? '+' : ''}{portfolio.pnl_yuan?.toFixed(0)}元
+              ({(portfolio.pnl_pct ?? 0) >= 0 ? '+' : ''}{((portfolio.pnl_pct ?? 0) * 100).toFixed(2)}%)
+            </span>
+          </span>
+        </div>
+      )}
       <div className="panel-table-body">
         <Table<Signal>
           dataSource={signals}
