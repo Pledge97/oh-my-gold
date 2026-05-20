@@ -18,7 +18,8 @@ const STATE_LABEL: Record<string, string> = {
   TREND_DECAY: '趋势衰减'
 }
 
-export function StatusBar() {
+/** StatusBar 组件 Props。isMobile 控制移动端布局。 */
+export function StatusBar({ isMobile = false }: { isMobile?: boolean }) {
   const { price, marketState, cbActive, cbLevel, baseHoldings, portfolio, performance, isMarketOpen } = useStore()
   const stateColor = STATE_COLOR[marketState] ?? '#888'
 
@@ -45,10 +46,12 @@ export function StatusBar() {
         borderBottom: '1px solid #1a3a5c',
         display: 'flex',
         alignItems: 'center',
-        gap: 24,
-        position: 'relative',
+        gap: isMobile ? 12 : 24,
+        position: isMobile ? 'sticky' : 'relative',
+        top: isMobile ? 0 : undefined,
+        zIndex: isMobile ? 100 : undefined,
         overflow: 'hidden',
-        flexShrink: 0
+        flexShrink: 0,
       }}
     >
       {/* 左侧装饰线 */}
@@ -69,7 +72,7 @@ export function StatusBar() {
         <Typography.Text
           className="price-value"
           style={{
-            fontSize: 28,
+            fontSize: isMobile ? 22 : 28,
             fontWeight: 700,
             color: '#f0d060',
             fontFamily: "'Courier New', monospace",
@@ -127,16 +130,19 @@ export function StatusBar() {
         </span>
       </div>
 
-      <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
-
-      {/* 持仓金额 */}
-      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
-        <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>持仓金额</span>
-        <span style={{ fontSize: 16, fontWeight: 700, color: '#f0d060', fontFamily: "'Courier New', monospace" }}>
-          {totalMarketValue.toFixed(0)}
-          <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7 }}>元</span>
-        </span>
-      </div>
+      {/* 持仓金额（移动端隐藏） */}
+      {!isMobile && (
+        <>
+          <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
+            <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>持仓金额</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: '#f0d060', fontFamily: "'Courier New', monospace" }}>
+              {totalMarketValue.toFixed(0)}
+              <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7 }}>元</span>
+            </span>
+          </div>
+        </>
+      )}
 
       <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
 
@@ -161,57 +167,48 @@ export function StatusBar() {
         </span>
       </div>
 
-      <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+      {/* 累计盈亏（移动端隐藏） */}
+      {!isMobile && (
+        <>
+          <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+          {performance &&
+            (() => {
+              const cum = performance.cumulative_pnl_yuan
+              const cumColor = cum >= 0 ? '#ff4d4f' : '#00ff88'
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
+                  <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>累计盈亏</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: cumColor, textShadow: `0 0 8px ${cumColor}66`, fontFamily: "'Courier New', monospace" }}>
+                    {cum >= 0 ? '+' : ''}
+                    {cum.toFixed(2)} 元
+                  </span>
+                </div>
+              )
+            })()}
+        </>
+      )}
 
-      {/* 累计盈亏 */}
-      {performance &&
-        (() => {
-          const cum = performance.cumulative_pnl_yuan
-          const cumColor = cum >= 0 ? '#ff4d4f' : '#00ff88'
-          return (
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
-              <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>累计盈亏</span>
-              <span style={{ fontSize: 16, fontWeight: 700, color: cumColor, textShadow: `0 0 8px ${cumColor}66`, fontFamily: "'Courier New', monospace" }}>
-                {cum >= 0 ? '+' : ''}
-                {cum.toFixed(2)} 元
-              </span>
-            </div>
-          )
-        })()}
-
-      {/* 右侧：市场状态 + 时间 */}
+      {/* 右侧：行情 + 市场状态（移动端仅显示行情） */}
       <div style={{ marginLeft: 'auto', textAlign: 'right', display: 'flex', alignItems: 'center', gap: 16 }}>
-        {/* 市场状态 */}
+        {/* 行情 */}
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, textAlign: 'right' }}>
           <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>行情</span>
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: stateColor,
-              textShadow: `0 0 8px ${stateColor}66`,
-              letterSpacing: '0.05em'
-            }}
-          >
+          <span style={{ fontSize: 13, fontWeight: 600, color: stateColor, textShadow: `0 0 8px ${stateColor}66`, letterSpacing: '0.05em' }}>
             {STATE_LABEL[marketState] ?? marketState}
           </span>
         </div>
-        <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
-        {/* 时间 */}
-        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, textAlign: 'right' }}>
-          <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>市场状态</span>
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: stateColor,
-              textShadow: `0 0 8px ${stateColor}66`,
-              letterSpacing: '0.05em'
-            }}
-          >
-            {isMarketOpen ? '开市' : '休市'}
-          </span>
-        </div>
+        {/* 市场状态（移动端隐藏） */}
+        {!isMobile && (
+          <>
+            <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, textAlign: 'right' }}>
+              <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>市场状态</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: stateColor, textShadow: `0 0 8px ${stateColor}66`, letterSpacing: '0.05em' }}>
+                {isMarketOpen ? '开市' : '休市'}
+              </span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
