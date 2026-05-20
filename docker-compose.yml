@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    image: oh-my-gold-backend:latest
+    container_name: oh-my-gold-backend
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    expose:
+      - "8000"
+
+  data-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.data
+    image: oh-my-gold-data-service:latest
+    container_name: oh-my-gold-data-service
+    restart: unless-stopped
+    depends_on:
+      - backend
+    command: ["sh", "-c", "sleep 5 && uvicorn main:app --host 0.0.0.0 --port 8001"]
+    volumes:
+      - ./data:/app/data
+    expose:
+      - "8001"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: oh-my-gold-frontend:latest
+    container_name: oh-my-gold-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - data-service
+    ports:
+      - "80:80"
