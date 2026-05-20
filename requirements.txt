@@ -5,5 +5,6 @@ pandas==2.2.2
 ta
 akshare>=1.16.72,<1.19.0
 httpx==0.27.2
+chinesecalendar==1.11.0
 pytest==8.3.2
 pytest-asyncio==0.23.8
