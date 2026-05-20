@@ -108,32 +108,34 @@ export function StatusBar({ isMobile = false }: { isMobile?: boolean }) {
         </>
       )}
 
-      <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
-
-      {/* 持仓克数 */}
-      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
-        <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>持仓克数</span>
-        <span style={{ fontSize: 16, fontWeight: 700, color: '#c8d8e8', fontFamily: "'Courier New', monospace" }}>
-          {totalAmountG.toFixed(1)}
-          <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7 }}>g</span>
-        </span>
-      </div>
-
-      <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
-
-      {/* 持仓均价 */}
-      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
-        <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>持仓均价</span>
-        <span style={{ fontSize: 16, fontWeight: 700, color: '#c8d8e8', fontFamily: "'Courier New', monospace" }}>
-          {totalAmountG > 0 ? (totalCost / totalAmountG).toFixed(2) : '0.00'}
-          <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7 }}>元/g</span>
-        </span>
-      </div>
-
-      {/* 持仓金额（移动端隐藏） */}
+      {/* 桌面端：完整字段 */}
       {!isMobile && (
         <>
           <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+
+          {/* 持仓克数 */}
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
+            <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>持仓克数</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: '#c8d8e8', fontFamily: "'Courier New', monospace" }}>
+              {totalAmountG.toFixed(1)}
+              <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7 }}>g</span>
+            </span>
+          </div>
+
+          <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+
+          {/* 持仓均价 */}
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
+            <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>持仓均价</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: '#c8d8e8', fontFamily: "'Courier New', monospace" }}>
+              {totalAmountG > 0 ? (totalCost / totalAmountG).toFixed(2) : '0.00'}
+              <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7 }}>元/g</span>
+            </span>
+          </div>
+
+          <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+
+          {/* 持仓金额 */}
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
             <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>持仓金额</span>
             <span style={{ fontSize: 16, fontWeight: 700, color: '#f0d060', fontFamily: "'Courier New', monospace" }}>
@@ -141,36 +143,33 @@ export function StatusBar({ isMobile = false }: { isMobile?: boolean }) {
               <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7 }}>元</span>
             </span>
           </div>
-        </>
-      )}
 
-      {!isMobile && <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />}
-
-      {/* 持仓盈亏 */}
-      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
-        <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>持仓盈亏</span>
-        <span
-          style={{
-            fontSize: 16,
-            fontWeight: 700,
-            color: totalPnl >= 0 ? '#ff4d4f' : '#00ff88',
-            textShadow: totalPnl >= 0 ? '0 0 8px rgba(255,77,79,0.4)' : '0 0 8px rgba(0,255,136,0.4)',
-            fontFamily: "'Courier New', monospace"
-          }}
-        >
-          {totalPnl >= 0 ? '+' : ''}
-          {totalPnl.toFixed(2)} 元
-          <span style={{ fontSize: 12, marginLeft: 6, opacity: 0.85 }}>
-            ({totalPnlPct >= 0 ? '+' : ''}
-            {(totalPnlPct * 100).toFixed(2)}%)
-          </span>
-        </span>
-      </div>
-
-      {/* 累计盈亏（移动端隐藏） */}
-      {!isMobile && (
-        <>
           <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+
+          {/* 持仓盈亏 */}
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
+            <span style={{ fontSize: 10, color: '#4fc3f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>持仓盈亏</span>
+            <span
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: totalPnl >= 0 ? '#ff4d4f' : '#00ff88',
+                textShadow: totalPnl >= 0 ? '0 0 8px rgba(255,77,79,0.4)' : '0 0 8px rgba(0,255,136,0.4)',
+                fontFamily: "'Courier New', monospace"
+              }}
+            >
+              {totalPnl >= 0 ? '+' : ''}
+              {totalPnl.toFixed(2)} 元
+              <span style={{ fontSize: 12, marginLeft: 6, opacity: 0.85 }}>
+                ({totalPnlPct >= 0 ? '+' : ''}
+                {(totalPnlPct * 100).toFixed(2)}%)
+              </span>
+            </span>
+          </div>
+
+          <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+
+          {/* 累计盈亏 */}
           {performance &&
             (() => {
               const cum = performance.cumulative_pnl_yuan

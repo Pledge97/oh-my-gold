@@ -72,9 +72,8 @@ docker compose version
 示例：
 
 ```bash
-sudo mkdir -p /opt/oh-my-gold
-sudo chown -R "$USER":"$USER" /opt/oh-my-gold
-cd /opt/oh-my-gold
+cd /opt
+git clone https://github.com/Pledge97/oh-my-gold
 ```
 
 把代码同步到该目录后继续执行后续命令。
@@ -115,24 +114,12 @@ docker-compose up -d --build
 
 ## 6. 查看状态和日志
 
-新版 Compose：
-
 ```bash
 docker compose ps
 docker compose logs -f
 docker compose logs -f backend
 docker compose logs -f data-service
 docker compose logs -f frontend
-```
-
-旧版 Compose：
-
-```bash
-docker-compose ps
-docker-compose logs -f
-docker-compose logs -f backend
-docker-compose logs -f data-service
-docker-compose logs -f frontend
 ```
 
 ## 7. 访问服务
@@ -162,16 +149,8 @@ curl http://127.0.0.1/data/health
 
 拉取或上传新代码后：
 
-新版 Compose：
-
 ```bash
 docker compose up -d --build
-```
-
-旧版 Compose：
-
-```bash
-docker-compose up -d --build
 ```
 
 `./data/gold.db` 保存在宿主机，不会因为镜像重建丢失。
