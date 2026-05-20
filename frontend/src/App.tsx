@@ -11,9 +11,15 @@ import { PositionTable } from './components/PositionTable'
 
 export default function App() {
   useWebSocket()
-  const { setSignals, setPerformance, setDailyPrices, isMarketOpen } = useStore()
+  const { setSignals, setPerformance, setDailyPrices, isMarketOpen, price } = useStore()
   // 记录已处理的最新信号 id，避免无新信号时重复刷新绩效统计。
   const latestSignalIdRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    document.title = Number.isFinite(price) && price > 0
+      ? `¥${price.toFixed(2)} | Gold Inspector`
+      : 'Gold Inspector'
+  }, [price])
 
   useEffect(() => {
     fetchSignals().then((signals) => {
@@ -80,4 +86,3 @@ export default function App() {
     </div>
   )
 }
-
