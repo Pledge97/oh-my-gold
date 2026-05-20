@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
 import { useStore } from './store/useStore'
+import { useIsMobile } from './hooks/useIsMobile'
 import { fetchSignals, fetchPerformance, fetchDailyPrices } from './api/client'
 import { StatusBar } from './components/StatusBar'
 import { PriceChart } from './components/PriceChart'
@@ -12,6 +13,7 @@ import { PositionTable } from './components/PositionTable'
 export default function App() {
   useWebSocket()
   const { setSignals, setPerformance, setDailyPrices, isMarketOpen, price } = useStore()
+  const isMobile = useIsMobile()
   // 记录已处理的最新信号 id，避免无新信号时重复刷新绩效统计。
   const latestSignalIdRef = useRef<number | null>(null)
 
@@ -44,6 +46,22 @@ export default function App() {
     }, 30000)
     return () => clearInterval(interval)
   }, [isMarketOpen, setSignals, setPerformance])
+
+  if (isMobile) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#060b14', display: 'flex', flexDirection: 'column' }}>
+        <div className="dashboard-scanline" />
+        <StatusBar isMobile />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 8 }}>
+          <SignalPanel isMobile />
+          <PositionTable isMobile />
+          <TickChart isMobile />
+          <PriceChart isMobile />
+          <PerformanceStats isMobile />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ height: '100vh', background: '#060b14', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
