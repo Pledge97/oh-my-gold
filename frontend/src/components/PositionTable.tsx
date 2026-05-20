@@ -23,7 +23,7 @@ interface SellFormValues {
   close_date: dayjs.Dayjs
 }
 
-export function PositionTable() {
+export function PositionTable({ isMobile = false }: { isMobile?: boolean }) {
   const [buyOpen, setBuyOpen] = useState(false)
   const [sellOpen, setSellOpen] = useState(false)
   const [sellingPos, setSellingPos] = useState<BaseHolding | null>(null)
@@ -188,10 +188,10 @@ export function PositionTable() {
           border: '1px solid #1a3a5c',
           borderRadius: 4,
           overflow: 'hidden',
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0
+          ...(isMobile
+            ? { height: 250, display: 'flex', flexDirection: 'column' }
+            : { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }
+          ),
         }}
       >
         <div className="panel-title" style={{ display: 'flex', alignItems: 'center' }}>
