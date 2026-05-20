@@ -105,7 +105,7 @@ function hideTooltip(tooltip: HTMLDivElement | null) {
   if (tooltip) tooltip.style.display = 'none'
 }
 
-export function TickChart() {
+export function TickChart({ isMobile = false }: { isMobile?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -252,7 +252,16 @@ export function TickChart() {
   }, [indicators, price])
 
   return (
-    <div style={{ borderTop: '1px solid #1a3a5c', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',border: '1px solid #1a3a5c', borderRadius: 4 }}>
+    <div style={{
+      border: '1px solid #1a3a5c',
+      borderRadius: 4,
+      display: 'flex',
+      flexDirection: 'column',
+      ...(isMobile
+        ? { height: 250 }
+        : { flex: 1, minHeight: 0 }
+      ),
+    }}>
       <div style={{
         padding: '4px 12px',
         fontSize: 10,
