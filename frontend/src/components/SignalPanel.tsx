@@ -27,7 +27,7 @@ const TYPE_LABEL: Record<string, string> = {
   TREND_CLEAR: '趋势清仓'
 }
 
-export function SignalPanel() {
+export function SignalPanel({ isMobile = false }: { isMobile?: boolean }) {
   const signals = useStore((s) => s.signals)
   const portfolio = useStore((s) => s.portfolio)
 
@@ -129,10 +129,10 @@ export function SignalPanel() {
         border: '1px solid #1a3a5c',
         borderRadius: 4,
         overflow: 'hidden',
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: 0
+        ...(isMobile
+          ? { height: 250, display: 'flex', flexDirection: 'column' }
+          : { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }
+        ),
       }}
     >
       <div className="panel-title" style={{ flexWrap: 'wrap', gap: 8 }}>
