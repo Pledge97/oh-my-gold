@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { createChart, ColorType, LineStyle, type Time } from 'lightweight-charts'
 import { useStore } from '../store/useStore'
+import { MOBILE_PANEL_HEIGHT } from '../constants'
 
 // 图表横轴显示使用的本地化语言。
 const CHART_LOCALE = 'zh-CN'
@@ -75,6 +76,7 @@ function hideTooltip(tooltip: HTMLDivElement | null) {
   if (tooltip) tooltip.style.display = 'none'
 }
 
+/** isMobile 为 true 时使用固定高度移动端布局。 */
 export function PriceChart({ isMobile = false }: { isMobile?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -207,7 +209,7 @@ export function PriceChart({ isMobile = false }: { isMobile?: boolean }) {
       border: '1px solid #1a3a5c',
       borderRadius: 4,
       ...(isMobile
-        ? { height: 250 }
+        ? { height: MOBILE_PANEL_HEIGHT }
         : { flex: 1, minHeight: 0 }
       ),
     }}>

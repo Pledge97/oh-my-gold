@@ -1,6 +1,7 @@
 import { Table, Tooltip } from 'antd'
 import { useStore } from '../store/useStore'
 import type { Signal } from '../types'
+import { MOBILE_PANEL_HEIGHT } from '../constants'
 
 // Table body fills the remaining panel height so the header can stay fixed.
 const TABLE_SCROLL_HEIGHT = '100%'
@@ -27,6 +28,7 @@ const TYPE_LABEL: Record<string, string> = {
   TREND_CLEAR: '趋势清仓'
 }
 
+/** isMobile 为 true 时使用固定高度移动端布局。 */
 export function SignalPanel({ isMobile = false }: { isMobile?: boolean }) {
   const signals = useStore((s) => s.signals)
   const portfolio = useStore((s) => s.portfolio)
@@ -129,9 +131,11 @@ export function SignalPanel({ isMobile = false }: { isMobile?: boolean }) {
         border: '1px solid #1a3a5c',
         borderRadius: 4,
         overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
         ...(isMobile
-          ? { height: 250, display: 'flex', flexDirection: 'column' }
-          : { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }
+          ? { height: MOBILE_PANEL_HEIGHT }
+          : { flex: 1, minHeight: 0 }
         ),
       }}
     >

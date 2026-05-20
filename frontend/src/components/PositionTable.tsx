@@ -4,6 +4,7 @@ import { PlusOutlined, DollarOutlined, DeleteOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useStore, BaseHolding } from '../store/useStore'
 import { createBaseHolding, closeBaseHolding, fetchBaseHoldings } from '../api/client'
+import { MOBILE_PANEL_HEIGHT } from '../constants'
 
 /** 卖出手续费率（与后端 config.SELL_FEE_RATE 保持一致）。 */
 const SELL_FEE_RATE = 0.004
@@ -23,6 +24,7 @@ interface SellFormValues {
   close_date: dayjs.Dayjs
 }
 
+/** isMobile 为 true 时使用固定高度移动端布局。 */
 export function PositionTable({ isMobile = false }: { isMobile?: boolean }) {
   const [buyOpen, setBuyOpen] = useState(false)
   const [sellOpen, setSellOpen] = useState(false)
@@ -188,9 +190,11 @@ export function PositionTable({ isMobile = false }: { isMobile?: boolean }) {
           border: '1px solid #1a3a5c',
           borderRadius: 4,
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
           ...(isMobile
-            ? { height: 250, display: 'flex', flexDirection: 'column' }
-            : { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }
+            ? { height: MOBILE_PANEL_HEIGHT }
+            : { flex: 1, minHeight: 0 }
           ),
         }}
       >

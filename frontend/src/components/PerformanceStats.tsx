@@ -1,5 +1,8 @@
 import { useStore } from '../store/useStore'
 
+/** 移动端统计卡片 flex basis：3列布局，容器 gap 8px，每列减去约 6px 间距。 */
+const MOBILE_STAT_CARD_FLEX = '0 0 calc(33.333% - 6px)'
+
 interface StatCardProps {
   /** 统计项标签。 */
   label: string
@@ -20,7 +23,7 @@ function StatCard({ label, value, color = '#c8d8e8', unit, isMobile = false }: S
       border: '1px solid #1a3a5c',
       borderRadius: 4,
       padding: '10px 14px',
-      flex: isMobile ? '0 0 calc(33.333% - 6px)' : 1,
+      flex: isMobile ? MOBILE_STAT_CARD_FLEX : 1,
       position: 'relative',
       overflow: 'hidden',
     }}>
