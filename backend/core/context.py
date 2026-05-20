@@ -21,6 +21,7 @@ class IndicatorSnapshot:
     ema_5m_20: float = 0.0
     ema_4h_20: float = 0.0
     ema_4h_60: float = 0.0
+    ema_2h_20: float = 0.0  # 2小时 EMA20，用于 TREND_UP 追踪止盈
 
 
 @dataclass

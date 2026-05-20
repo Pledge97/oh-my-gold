@@ -66,3 +66,18 @@ TREND_UP 三次止盈合计：40% + 30% + 30% = 100%，全部清仓。
 - 止损逻辑（`exit_signal.py`）不变
 - 买入逻辑（`buy_signal.py`）不变
 - 非 TREND_UP 状态的止盈逻辑不变
+
+## 实现完成
+
+- 已新增 TREND_UP 止盈配置常量（`backend/config.py`）
+- 已新增 `IndicatorSnapshot.ema_2h_20` 字段（`backend/core/context.py`）
+- 已新增 2H K线构建和 EMA20 计算缓存（`backend/core/scheduler.py`）
+- 已在 `sell_signal.py` 增加 TREND_UP 分支逻辑
+- 已验证 `engine.py` 继续传入完整 `ctx`，无需额外改动
+
+**测试覆盖：**
+
+- 单元测试：`tests/test_context.py`
+- 回归测试：`tests/test_scheduler_2h.py`
+- 卖出信号测试：`tests/test_sell_signal.py`
+- 端到端流程测试：`tests/test_trend_up_integration.py`

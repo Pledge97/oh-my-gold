@@ -26,6 +26,7 @@ _TICK_CACHE_MS = _TICK_CACHE_DAYS * 86400 * 1000
 
 # 慢速指标刷新间隔（秒）
 _4H_REFRESH_SEC = 3600    # 4小时K线每小时重建一次
+_2H_PERIOD_SEC = 7200     # 2小时K线周期秒数
 
 # ── 内存缓存 ──────────────────────────────────────────────────
 # tick 缓存：deque 保证 O(1) 头部清理
@@ -33,9 +34,11 @@ _tick_cache: deque[dict] = deque()
 
 # 慢速指标缓存
 _kline_4h_cache: pd.DataFrame = pd.DataFrame()
+_kline_2h_cache: pd.DataFrame = pd.DataFrame()  # 2小时K线缓存
 _daily_df_cache: pd.DataFrame = pd.DataFrame()
 _ema_4h_20_cache: float = 0.0
 _ema_4h_60_cache: float = 0.0
+_ema_2h_20_cache: float = 0.0  # 2小时 EMA20 缓存
 _adx_cache: dict = {"adx": 0.0, "plus_di": 0.0, "minus_di": 0.0, "adx_series": None}
 _atr_daily_mean_cache: float = 0.0
 
@@ -89,7 +92,8 @@ def _load_daily_df() -> pd.DataFrame:
 
 def _refresh_slow_indicators(now: float) -> None:
     """按频率刷新4H K线和日线指标，避免每5秒全量重算"""
-    global _kline_4h_cache, _ema_4h_20_cache, _ema_4h_60_cache
+    global _kline_4h_cache, _kline_2h_cache
+    global _ema_4h_20_cache, _ema_4h_60_cache, _ema_2h_20_cache
     global _daily_df_cache, _adx_cache, _atr_daily_mean_cache
     global _last_4h_refresh, _last_daily_refresh_date
 
@@ -107,6 +111,16 @@ def _refresh_slow_indicators(now: float) -> None:
             _ema_4h_20_cache = _ema_4h_60_cache = 0.0
         _last_4h_refresh = now
         print(f"[kline] 4小时K线计算完成，{len(_kline_4h_cache)} 根，耗时 {time.time()-t0:.3f}s")
+
+        # 2H K线：与4H K线同频重建，供 TREND_UP 追踪止盈使用
+        print(f"[kline] 开始计算2小时K线（{len(ticks)} 条 tick）")
+        t0 = time.time()
+        _kline_2h_cache = build_kline(ticks, period_sec=_2H_PERIOD_SEC)
+        if not _kline_2h_cache.empty and len(_kline_2h_cache) >= config.EMA_SHORT:
+            _ema_2h_20_cache = float(calc_ema(_kline_2h_cache, config.EMA_SHORT).iloc[-1])
+        else:
+            _ema_2h_20_cache = 0.0
+        print(f"[kline] 2小时K线计算完成，{len(_kline_2h_cache)} 根，耗时 {time.time()-t0:.3f}s")
 
     # 日线ADX：每天 00:01 后首次 tick 时刷新
     today = date.today()
@@ -171,6 +185,7 @@ def _update_context(price: float, ts: int) -> None:
             ema_5m_20=ema_5m_20,
             ema_4h_20=_ema_4h_20_cache,
             ema_4h_60=_ema_4h_60_cache,
+            ema_2h_20=_ema_2h_20_cache,
         )
         ctx.market_state = detect_regime(ctx)
         ctx.ready = True
