@@ -75,7 +75,7 @@ function hideTooltip(tooltip: HTMLDivElement | null) {
   if (tooltip) tooltip.style.display = 'none'
 }
 
-export function PriceChart() {
+export function PriceChart({ isMobile = false }: { isMobile?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const dataLengthRef = useRef(0)
@@ -201,7 +201,16 @@ export function PriceChart() {
   }, [indicators, price, dailyPrices])
 
   return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', border: '1px solid #1a3a5c', borderRadius: 4 }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      border: '1px solid #1a3a5c',
+      borderRadius: 4,
+      ...(isMobile
+        ? { height: 250 }
+        : { flex: 1, minHeight: 0 }
+      ),
+    }}>
       <div
         style={{
           padding: '4px 12px',
