@@ -150,7 +150,7 @@ def _update_context(price: float, ts: int) -> None:
 
     # 5分钟K线：增量更新当前K线，O(1)
     _kline_5m_builder.update(ts, price)
-    kline_5m = _kline_5m_builder.to_dataframe()
+    kline_5m = _kline_5m_builder.to_dataframe(include_current=False)
 
     ctx.price = price
     ctx.ts = ts

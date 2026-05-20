@@ -106,10 +106,11 @@ class KlineBuilder:
             self._current = _Bar(ts=win_ts, open=price, high=price,
                                   low=price, close=price, volume=1)
 
-    def to_dataframe(self) -> pd.DataFrame:
-        """返回完整K线 DataFrame（历史 + 当前未完成K线），ts 单位毫秒，与 build_kline 一致"""
+    def to_dataframe(self, include_current: bool = True) -> pd.DataFrame:
+        """返回K线 DataFrame，ts 单位毫秒，与 build_kline 一致。
+        include_current=False 时只返回已完成K线，排除当前未收盘K线。"""
         bars = self._finished.copy()
-        if self._current is not None:
+        if include_current and self._current is not None:
             bars.append(self._current)
         if not bars:
             return pd.DataFrame(columns=_COLS)
