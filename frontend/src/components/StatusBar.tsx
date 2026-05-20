@@ -144,7 +144,7 @@ export function StatusBar({ isMobile = false }: { isMobile?: boolean }) {
         </>
       )}
 
-      <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
+      {!isMobile && <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />}
 
       {/* 持仓盈亏 */}
       <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>

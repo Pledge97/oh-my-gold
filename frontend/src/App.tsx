@@ -10,6 +10,9 @@ import { SignalPanel } from './components/SignalPanel'
 import { PerformanceStats } from './components/PerformanceStats'
 import { PositionTable } from './components/PositionTable'
 
+/** 应用背景色。 */
+const APP_BG = '#060b14'
+
 export default function App() {
   useWebSocket()
   const { setSignals, setPerformance, setDailyPrices, isMarketOpen, price } = useStore()
@@ -49,7 +52,7 @@ export default function App() {
 
   if (isMobile) {
     return (
-      <div style={{ minHeight: '100vh', background: '#060b14', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ minHeight: '100vh', background: APP_BG, display: 'flex', flexDirection: 'column' }}>
         <div className="dashboard-scanline" />
         <StatusBar isMobile />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 8 }}>
@@ -64,7 +67,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ height: '100vh', background: '#060b14', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: '100vh', background: APP_BG, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* 扫描线 */}
       <div className="dashboard-scanline" />
 
