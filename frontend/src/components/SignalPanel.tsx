@@ -41,8 +41,15 @@ export function SignalPanel({ isMobile = false }: { isMobile?: boolean }) {
       title: '时间',
       dataIndex: 'ts',
       key: 'ts',
-      width: 80,
-      render: (v: number) => <span style={{ color: '#4fc3f7', fontSize: 11 }}>{new Date(v).toLocaleTimeString('zh-CN', { hour12: false })}</span>
+      width: 90,
+      render: (v: number) => {
+        const d = new Date(v)
+        const mm = String(d.getMonth() + 1).padStart(2, '0')
+        const dd = String(d.getDate()).padStart(2, '0')
+        const HH = String(d.getHours()).padStart(2, '0')
+        const min = String(d.getMinutes()).padStart(2, '0')
+        return <span style={{ color: '#4fc3f7', fontSize: 11 }}>{`${mm}-${dd} ${HH}:${min}`}</span>
+      }
     },
     {
       title: '类型',
@@ -112,7 +119,7 @@ export function SignalPanel({ isMobile = false }: { isMobile?: boolean }) {
         )
       }
     },
-    {
+    ...(!isMobile ? [{
       title: '原因',
       dataIndex: 'reason',
       key: 'reason',
@@ -122,7 +129,7 @@ export function SignalPanel({ isMobile = false }: { isMobile?: boolean }) {
           <span style={{ color: '#6a8aaa', fontSize: 11, cursor: 'default' }}>{v}</span>
         </Tooltip>
       )
-    }
+    }] : [])
   ]
   return (
     <div

@@ -92,6 +92,7 @@ export function PositionTable({ isMobile = false }: { isMobile?: boolean }) {
       title: '买入价',
       dataIndex: 'open_price',
       key: 'open_price',
+      width: 70,
       render: (v: number) => <span style={{ color: '#f0d060', fontFamily: "'Courier New', monospace", fontSize: 12 }}>{v.toFixed(2)}</span>
     },
     {
@@ -103,7 +104,6 @@ export function PositionTable({ isMobile = false }: { isMobile?: boolean }) {
     {
       title: '浮盈',
       key: 'pnl',
-      width: 150,
       render: (_: unknown, row: BaseHolding) => {
         if (!price || price === 0) return <span style={{ color: '#2a4a6a' }}>—</span>
         const pnl = (price - row.open_price) * row.amount_g - price * row.amount_g * SELL_FEE_RATE
@@ -113,10 +113,12 @@ export function PositionTable({ isMobile = false }: { isMobile?: boolean }) {
           <span style={{ color, fontFamily: "'Courier New', monospace", fontSize: 12, textShadow: `0 0 6px ${color}44` }}>
             {pnl >= 0 ? '+' : ''}
             {pnl.toFixed(2)}
-            <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.8 }}>
-              ({pct >= 0 ? '+' : ''}
-              {(pct * 100).toFixed(2)}%)
-            </span>
+            {!isMobile && (
+              <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.8 }}>
+                ({pct >= 0 ? '+' : ''}
+                {(pct * 100).toFixed(2)}%)
+              </span>
+            )}
           </span>
         )
       }
@@ -125,12 +127,18 @@ export function PositionTable({ isMobile = false }: { isMobile?: boolean }) {
       title: '买入时间',
       dataIndex: 'open_ts',
       key: 'open_ts',
-      render: (v: number) => <span style={{ color: '#4fc3f7', fontSize: 11 }}>{new Date(v).toLocaleDateString('zh-CN')}</span>
+      render: (v: number) => {
+        const d = new Date(v)
+        const yy = String(d.getFullYear()).slice(2)
+        const mm = String(d.getMonth() + 1).padStart(2, '0')
+        const dd = String(d.getDate()).padStart(2, '0')
+        return <span style={{ color: '#4fc3f7', fontSize: 11 }}>{`${yy}-${mm}-${dd}`}</span>
+      }
     },
     {
       title: '操作',
       key: 'action',
-      width: 80,
+      width: 60,
       render: (_: unknown, row: BaseHolding) => (
         <div style={{ display: 'flex', gap: 4 }}>
           <Button type="text" size="small" icon={<DollarOutlined />} onClick={() => openSell(row)} style={{ color: '#ff4d4f', padding: 0 }} title="卖出" />
@@ -218,18 +226,22 @@ export function PositionTable({ isMobile = false }: { isMobile?: boolean }) {
                     <span style={{ fontSize: 12, marginLeft: 3, opacity: 0.7, textTransform: 'none' }}>g</span>
                   </span>
                 </span>
-                <span>
-                  <span style={{ color: '#4a6a8a' }}>金额 </span>
-                  <span style={{ color: '#f0d060', fontFamily: "'Courier New', monospace" }}>{totalMarketValue.toFixed(0)}</span>
-                </span>
+                {!isMobile && (
+                  <span>
+                    <span style={{ color: '#4a6a8a' }}>金额 </span>
+                    <span style={{ color: '#f0d060', fontFamily: "'Courier New', monospace" }}>{totalMarketValue.toFixed(0)}</span>
+                  </span>
+                )}
                 <span style={{ color: totalPnl >= 0 ? '#ff4d4f' : '#00ff88', fontFamily: "'Courier New', monospace" }}>
                   <span style={{ color: '#4a6a8a' }}>浮盈 </span>
                   {totalPnl >= 0 ? '+' : ''}
                   {totalPnl.toFixed(2)}
-                  <span style={{ fontSize: 10, marginLeft: 3, opacity: 0.85 }}>
-                    ({totalPnlPct >= 0 ? '+' : ''}
-                    {(totalPnlPct * 100).toFixed(2)}%)
-                  </span>
+                  {!isMobile && (
+                    <span style={{ fontSize: 10, marginLeft: 3, opacity: 0.85 }}>
+                      ({totalPnlPct >= 0 ? '+' : ''}
+                      {(totalPnlPct * 100).toFixed(2)}%)
+                    </span>
+                  )}
                 </span>
               </>
             ) : (

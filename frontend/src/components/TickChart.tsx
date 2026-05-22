@@ -49,9 +49,10 @@ function formatLocalTickTime(time: Time) {
  *
  * @param chart lightweight-charts 图表实例。
  * @param dataLength tick 数据条数。
+ * @param forceReset 为 true 时强制重置视图范围（忽略用户交互状态）。
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function fillTickTimeScale(chart: any, dataLength: number) {
+function fillTickTimeScale(chart: any, dataLength: number, forceReset = false) {
   if (!chart || dataLength <= 0) return
   const chartWidth = chart.timeScale().width() || DEFAULT_CHART_WIDTH
   const visibleLogicalCount = dataLength + LEFT_LOGICAL_PADDING + RIGHT_LOGICAL_PADDING
@@ -59,10 +60,12 @@ function fillTickTimeScale(chart: any, dataLength: number) {
     barSpacing: Math.max(MIN_TICK_BAR_SPACING, chartWidth / visibleLogicalCount),
     minBarSpacing: MIN_TICK_BAR_SPACING,
   })
-  chart.timeScale().setVisibleLogicalRange({
-    from: -LEFT_LOGICAL_PADDING,
-    to: dataLength - 1 + RIGHT_LOGICAL_PADDING,
-  })
+  if (forceReset) {
+    chart.timeScale().setVisibleLogicalRange({
+      from: -LEFT_LOGICAL_PADDING,
+      to: dataLength - 1 + RIGHT_LOGICAL_PADDING,
+    })
+  }
 }
 
 /**
@@ -78,7 +81,8 @@ function resizeTickChart(chart: any, container: HTMLDivElement, dataLength: numb
     width: container.clientWidth || DEFAULT_CHART_WIDTH,
     height: container.clientHeight || DEFAULT_CHART_HEIGHT,
   })
-  return requestAnimationFrame(() => fillTickTimeScale(chart, dataLength))
+  // resize 时强制重置视图，确保数据铺满新尺寸
+  return requestAnimationFrame(() => fillTickTimeScale(chart, dataLength, true))
 }
 
 /**
@@ -121,6 +125,10 @@ export function TickChart({ isMobile = false }: { isMobile?: boolean }) {
   const { price, indicators } = useStore()
   const lastTsRef = useRef<number>(0)
   const dataLengthRef = useRef(0)
+  // 标记用户是否手动拖拽/缩放过图表。
+  const userInteractedRef = useRef(false)
+  // 标记当前视图范围变化是否由代码触发（用于区分用户交互）。
+  const isProgrammaticChangeRef = useRef(false)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -145,6 +153,7 @@ export function TickChart({ isMobile = false }: { isMobile?: boolean }) {
         minBarSpacing: MIN_TICK_BAR_SPACING,
       },
       rightPriceScale: { borderColor: '#1a3a5c' },
+      handleScale: { axisPressedMouseMove: { price: false, time: true } },
       crosshair: {
         vertLine: { color: '#00d4ff44', labelVisible: false },
         horzLine: { color: '#00d4ff44', labelVisible: false }
@@ -153,6 +162,13 @@ export function TickChart({ isMobile = false }: { isMobile?: boolean }) {
       height: containerRef.current.clientHeight || DEFAULT_CHART_HEIGHT,
     })
     chartRef.current = chart
+
+    // 监听视图范围变化，区分用户手动交互和代码触发。
+    chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      if (!isProgrammaticChangeRef.current) {
+        userInteractedRef.current = true
+      }
+    })
 
     lineRef.current = chart.addLineSeries({
       color: '#00d4ff',
@@ -214,7 +230,9 @@ export function TickChart({ isMobile = false }: { isMobile?: boolean }) {
       lineRef.current?.setData(points)
       lastTsRef.current = data[data.length - 1].ts
       dataLengthRef.current = points.length
-      fillTickTimeScale(chart, points.length)
+      isProgrammaticChangeRef.current = true
+      fillTickTimeScale(chart, points.length, true)
+      isProgrammaticChangeRef.current = false
     })
 
     let resizeFrameId = 0
@@ -242,7 +260,12 @@ export function TickChart({ isMobile = false }: { isMobile?: boolean }) {
     lastTsRef.current = nowMs
     lineRef.current.update({ time: nowSec as unknown as `${number}`, value: price })
     dataLengthRef.current += 1
-    fillTickTimeScale(chartRef.current, dataLengthRef.current)
+    // 用户已手动交互时完全跳过，避免 barSpacing 覆盖缩放状态。
+    if (!userInteractedRef.current) {
+      isProgrammaticChangeRef.current = true
+      fillTickTimeScale(chartRef.current, dataLengthRef.current, true)
+      isProgrammaticChangeRef.current = false
+    }
   }, [price])
 
   // 实时更新布林带

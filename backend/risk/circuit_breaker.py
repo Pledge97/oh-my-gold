@@ -52,12 +52,12 @@ class CircuitBreaker:
         if self.is_active or atr_daily_mean <= 0:
             return
         if atr_current >= config.CB2_ATR_MULT * atr_daily_mean:
-            # 暂停至当日23:59:59
+            # 暂停至次日00:00:00
             import datetime
-            today_end = datetime.datetime.now().replace(
-                hour=23, minute=59, second=59, microsecond=0
+            tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).replace(
+                hour=0, minute=0, second=0, microsecond=0
             )
-            resume_ts = int(today_end.timestamp() * 1000)
+            resume_ts = int(tomorrow.timestamp() * 1000)
             self._activate(2, resume_ts,
                            f"ATR={atr_current:.2f} 超过均值{config.CB2_ATR_MULT}倍",
                            atr_current / atr_daily_mean)

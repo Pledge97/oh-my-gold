@@ -117,6 +117,7 @@ export function PriceChart({ isMobile = false }: { isMobile?: boolean }) {
         horzLine: { labelVisible: false }
       },
       rightPriceScale: { borderColor: '#1a3a5c' },
+      handleScale: { axisPressedMouseMove: { price: false, time: true } },
       width: containerRef.current.clientWidth || DEFAULT_CHART_WIDTH,
       height: containerRef.current.clientHeight || DEFAULT_CHART_HEIGHT
     })

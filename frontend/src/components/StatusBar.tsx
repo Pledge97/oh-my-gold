@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Typography } from 'antd'
 import { useStore } from '../store/useStore'
+import { resumeCircuitBreaker } from '../api/client'
 
 /** 卖出手续费率（与后端 config.SELL_FEE_RATE 保持一致）。 */
 const SELL_FEE_RATE = 0.004
@@ -22,6 +24,17 @@ const STATE_LABEL: Record<string, string> = {
 export function StatusBar({ isMobile = false }: { isMobile?: boolean }) {
   const { price, marketState, cbActive, cbLevel, baseHoldings, portfolio, performance, isMarketOpen } = useStore()
   const stateColor = STATE_COLOR[marketState] ?? '#888'
+  // 手动解除熔断的加载状态。
+  const [resuming, setResuming] = useState(false)
+
+  async function handleResume() {
+    setResuming(true)
+    try {
+      await resumeCircuitBreaker()
+    } finally {
+      setResuming(false)
+    }
+  }
 
   // 底仓汇总
   const baseCost = baseHoldings.reduce((sum, pos) => sum + pos.open_price * pos.amount_g, 0)
@@ -89,21 +102,42 @@ export function StatusBar({ isMobile = false }: { isMobile?: boolean }) {
       {cbActive && (
         <>
           <div style={{ width: 1, height: 36, background: '#1a3a5c' }} />
-          <div
-            style={{
-              padding: '4px 12px',
-              background: 'rgba(255,77,79,0.15)',
-              border: '1px solid #ff4d4f',
-              borderRadius: 4,
-              color: '#ff4d4f',
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              boxShadow: '0 0 12px rgba(255,77,79,0.3)',
-              animation: 'numPulse 1s ease-in-out infinite'
-            }}
-          >
-            ⚠ 熔断 L{cbLevel}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div
+              style={{
+                padding: '4px 12px',
+                background: 'rgba(255,77,79,0.15)',
+                border: '1px solid #ff4d4f',
+                borderRadius: 4,
+                color: '#ff4d4f',
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                boxShadow: '0 0 12px rgba(255,77,79,0.3)',
+                animation: 'numPulse 1s ease-in-out infinite'
+              }}
+            >
+              ⚠ 熔断 L{cbLevel}
+            </div>
+            {cbLevel === 3 && (
+              <button
+                onClick={handleResume}
+                disabled={resuming}
+                style={{
+                  padding: '3px 10px',
+                  background: 'transparent',
+                  border: '1px solid #ff4d4f',
+                  borderRadius: 4,
+                  color: '#ff4d4f',
+                  fontSize: 11,
+                  cursor: resuming ? 'not-allowed' : 'pointer',
+                  opacity: resuming ? 0.5 : 1,
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {resuming ? '解除中…' : '手动解除'}
+              </button>
+            )}
           </div>
         </>
       )}
