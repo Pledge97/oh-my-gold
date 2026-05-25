@@ -64,3 +64,13 @@ def test_sell_without_ts_still_works():
     pos.buy(1000.0, 50.0)
     pos.sell(1010.0, 20.0)
     assert pos.total_amount_g == pytest.approx(30.0)
+
+
+def test_full_since_ts_resets_after_sell_and_refill():
+    """卖出降至未满仓后重新买入满仓，full_since_ts 重置为新的满仓时间"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, config.T_MAX_AMOUNT_G, ts=1000)  # 满仓，full_since_ts=1000
+    pos.sell(1010.0, 10.0, ts=2000)                  # 降至 90g，full_since_ts 清除
+    assert pos.full_since_ts is None
+    pos.buy(1005.0, 10.0, ts=3000)                   # 重新满仓，full_since_ts=3000
+    assert pos.full_since_ts == 3000
