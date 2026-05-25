@@ -64,6 +64,7 @@ def check_sell_signal(
         if (
             not portfolio.tp1_done
             and portfolio.full_since_ts is not None
+            and portfolio.total_amount_g >= config.T_MAX_AMOUNT_G
             and current_ts_ms > 0
         ):
             trading_secs = calc_trading_seconds(portfolio.full_since_ts, current_ts_ms)
