@@ -25,7 +25,7 @@ class PortfolioPosition:
     tp2_done: bool = False                  # 第2次止盈是否已执行
     realized_pnl: float = 0.0               # 累计已实现盈亏（元，扣除手续费）
     last_buy_price: float | None = None     # 最近一次买入价格（用于加仓判断）
-    full_since_ts: int | None = None        # 首次达到满仓的时间戳（毫秒），非交易时段不计入
+    full_since_ts: int | None = None        # 达到满仓时的时间戳（毫秒），用于超时止盈计算
 
     @property
     def avg_cost(self) -> float:

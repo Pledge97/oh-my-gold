@@ -134,3 +134,28 @@ def test_load_portfolio_no_full_since_ts_when_not_full():
 
     assert portfolio.total_amount_g == pytest.approx(50.0)
     assert portfolio.full_since_ts is None
+
+
+def test_load_portfolio_restores_full_since_ts_after_partial_sell_and_refill():
+    """重启恢复：TP1卖出后重新加仓至满仓，full_since_ts 为最后一笔加仓的 ts"""
+    import sqlite3
+    from backend.risk.portfolio import load_portfolio_from_signals
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("""
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts INTEGER NOT NULL, type TEXT NOT NULL, mode TEXT,
+            price REAL, amount_g REAL, reason TEXT, pnl_yuan REAL
+        )
+    """)
+    conn.execute("INSERT INTO signals (ts, type, mode, price, amount_g, reason) VALUES (1000, 'BUY', 'OSCILLATION', 1000.0, 100.0, '')")
+    conn.execute("INSERT INTO signals (ts, type, mode, price, amount_g, reason, pnl_yuan) VALUES (2000, 'TAKE_PROFIT_1', 'OSCILLATION', 1010.0, 60.0, '', 5.0)")
+    conn.execute("INSERT INTO signals (ts, type, mode, price, amount_g, reason) VALUES (3000, 'ADD_LOT', 'OSCILLATION', 995.0, 60.0, '')")
+    conn.commit()
+
+    portfolio = load_portfolio_from_signals(conn)
+
+    assert portfolio.total_amount_g == pytest.approx(100.0)
+    assert portfolio.full_since_ts == 3000  # 重新满仓的 ADD_LOT ts
