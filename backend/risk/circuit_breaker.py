@@ -3,6 +3,7 @@ import time
 from dataclasses import dataclass, field
 from backend.db.database import get_conn
 from backend import config
+from backend.core.market_hours import CST
 
 
 @dataclass
@@ -53,8 +54,8 @@ class CircuitBreaker:
             return
         if atr_current >= config.CB2_ATR_MULT * atr_daily_mean:
             # 暂停至次日00:00:00
-            import datetime
-            tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).replace(
+            from datetime import datetime, timedelta
+            tomorrow = (datetime.now(CST) + timedelta(days=1)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
             resume_ts = int(tomorrow.timestamp() * 1000)
@@ -66,8 +67,8 @@ class CircuitBreaker:
         self._daily_stop_count += 1
         if self._daily_stop_count >= config.CB3_DAILY_STOP_COUNT:
             # 暂停至次日
-            import datetime
-            tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).replace(
+            from datetime import datetime, timedelta
+            tomorrow = (datetime.now(CST) + timedelta(days=1)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
             self._activate(3, int(tomorrow.timestamp() * 1000),

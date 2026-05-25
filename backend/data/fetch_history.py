@@ -4,6 +4,7 @@
 """
 import sys
 from datetime import datetime, timedelta
+from backend.core.market_hours import CST
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -20,8 +21,8 @@ def fetch_and_store():
 
     init_db()
 
-    three_years_ago = (datetime.now() - timedelta(days=365 * 3)).strftime("%Y-%m-%d")
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    three_years_ago = (datetime.now(CST) - timedelta(days=365 * 3)).strftime("%Y-%m-%d")
+    yesterday = (datetime.now(CST) - timedelta(days=1)).strftime("%Y-%m-%d")
 
     # 最新数据在昨天或今天则跳过
     with get_conn() as conn:

@@ -6,14 +6,19 @@
   - 周日全天休市
   - 中国法定节假日休市
 """
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 import chinese_calendar
+
+# 北京时间 UTC+8
+CST = timezone(timedelta(hours=8))
 
 
 def is_trading_time(dt: datetime | None = None) -> bool:
     """返回 True 表示当前处于积存金交易时间内。"""
     if dt is None:
-        dt = datetime.now()
+        dt = datetime.now(CST)
+    elif dt.tzinfo is None:
+        dt = dt.replace(tzinfo=CST)
 
     weekday = dt.weekday()  # 0=周一 … 6=周日
     t = dt.time()

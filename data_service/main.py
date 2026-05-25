@@ -2,7 +2,7 @@
 # 独立的 tick 采集服务，与量化引擎解耦，共享同一个 SQLite 数据库。
 # 启动：uvicorn main:app --port 8001
 from contextlib import asynccontextmanager
-from datetime import datetime, time as dtime, timedelta, date
+from datetime import datetime, time as dtime, timedelta, date, timezone
 from pathlib import Path
 import sqlite3
 import time
@@ -23,8 +23,11 @@ TICK_INTERVAL_SEC = 5
 
 # ── 交易时间判断 ───────────────────────────────────────────────
 
+# 北京时间 UTC+8
+_CST = timezone(timedelta(hours=8))
+
 def is_trading_time() -> bool:
-    dt = datetime.now()
+    dt = datetime.now(_CST)
     weekday = dt.weekday()
     t = dt.time()
 
