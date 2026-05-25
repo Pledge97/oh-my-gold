@@ -44,7 +44,7 @@ class StrategyEngine:
 
         # 5. 止盈检查
         if not self._portfolio.is_empty():
-            sell_sig = check_sell_signal(self._portfolio, ctx)
+            sell_sig = check_sell_signal(self._portfolio, ctx, current_ts_ms=ctx.ts or 0)
             if sell_sig:
                 signal_out = self._execute_sell_v3(sell_sig, ctx)
 
@@ -118,7 +118,7 @@ class StrategyEngine:
         """执行建仓/加仓，只写 signals 表。加仓后重置止盈标记。"""
         if self._portfolio.is_empty():
             self._portfolio.round_counter += 1
-        self._portfolio.buy(ctx.price, signal.amount_g)
+        self._portfolio.buy(ctx.price, signal.amount_g, ts=ctx.ts)
         # 加仓后重置止盈标记，下一次止盈从 TP1 开始
         self._portfolio.tp1_done = False
         self._portfolio.tp2_done = False
@@ -135,7 +135,7 @@ class StrategyEngine:
         )
         sold_g = round(sold_g, 4)
         pnl_yuan = calc_sell_pnl(sold_g, ctx.price, avg_cost, config.SELL_FEE_RATE)
-        self._portfolio.sell(ctx.price, sold_g)
+        self._portfolio.sell(ctx.price, sold_g, ts=ctx.ts)
 
         if signal.exit_reason == ExitReason.TAKE_PROFIT_1:
             self._portfolio.tp1_done = True
@@ -155,7 +155,7 @@ class StrategyEngine:
         )
         sold_g = round(sold_g, 4)
         pnl_yuan = calc_sell_pnl(sold_g, ctx.price, avg_cost, config.SELL_FEE_RATE)
-        self._portfolio.sell(ctx.price, sold_g)
+        self._portfolio.sell(ctx.price, sold_g, ts=ctx.ts)
         self._save_signal(ctx, signal.exit_reason.value, sold_g, signal.reason, pnl_yuan=round(pnl_yuan, 2))
         return {"type": signal.exit_reason.value, "amount_g": sold_g, "reason": signal.reason}
 
