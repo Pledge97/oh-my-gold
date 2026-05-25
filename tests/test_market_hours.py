@@ -44,5 +44,4 @@ def test_24_trading_hours_across_weekend():
     result = calc_trading_seconds(ts("2025-05-16 14:00"), ts("2025-05-19 14:00"))
     # 周五 14:00~02:30(次日) = 12.5h，周一 09:00~14:00 = 5h，共 17.5h 还不够，说明需要更长区间
     # 此测试验证：跨周末时周六 00:00~02:30 夜盘延续计入，周日不计入
-    assert result > 0  # 基础验证：跨周末有交易时长
-    assert result < (3 * 24 * 3600)  # 不超过自然时间
+    assert result == pytest.approx(17.5 * 3600, abs=240)  # 17.5 trading hours, 4-min tolerance
