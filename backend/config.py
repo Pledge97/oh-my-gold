@@ -87,3 +87,7 @@ TREND_TAKE_PROFIT_1_PCT: float = 0.012  # TREND_UP 第1次止盈触发盈利率
 TREND_TAKE_PROFIT_2_PCT: float = 0.020  # TREND_UP 第2次止盈触发盈利率
 TREND_TP1_SELL_RATIO: float = 0.40      # TREND_UP 第1次止盈卖出比例
 TREND_TP2_SELL_RATIO: float = 0.30      # TREND_UP 第2次止盈卖出初始仓位比例
+
+# 满仓超时降低止盈
+FULL_POSITION_TIMEOUT_HOURS: float = 24.0     # 满仓超时阈值（交易小时）
+FULL_POSITION_TIMEOUT_TP1_PCT: float = 0.003  # 超时后降低的 TP1 止盈率（0.3%）
