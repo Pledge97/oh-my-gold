@@ -25,6 +25,7 @@ class PortfolioPosition:
     tp2_done: bool = False                  # 第2次止盈是否已执行
     realized_pnl: float = 0.0               # 累计已实现盈亏（元，扣除手续费）
     last_buy_price: float | None = None     # 最近一次买入价格（用于加仓判断）
+    full_since_ts: int | None = None        # 首次达到满仓的时间戳（毫秒），非交易时段不计入
 
     @property
     def avg_cost(self) -> float:
@@ -45,19 +46,24 @@ class PortfolioPosition:
         fee = market_value * config.SELL_FEE_RATE
         return (market_value - fee - self.total_cost) / self.total_cost
 
-    def buy(self, price: float, amount_g: float) -> None:
+    def buy(self, price: float, amount_g: float, ts: int | None = None) -> None:
         """
         记录买入或加仓后的内存状态。
         更新持仓量、成本和最近买入价。
+        ts: 买入时间戳（毫秒），传入时用于记录满仓时间。
         """
         self.total_amount_g += amount_g
         self.total_cost += price * amount_g
         self.last_buy_price = price
+        # 首次达到满仓时记录时间戳
+        if ts is not None and self.full_since_ts is None and self.total_amount_g >= config.T_MAX_AMOUNT_G:
+            self.full_since_ts = ts
 
-    def sell(self, price: float, amount_g: float) -> float:
+    def sell(self, price: float, amount_g: float, ts: int | None = None) -> float:
         """
         按当前均价卖出指定克数，返回本次实现盈亏（用于实时交易，不用于回放）。
         回放时应使用存储的 pnl_yuan，避免重复计算。
+        ts: 卖出时间戳（毫秒），暂未使用，保留供未来扩展。
         """
         if self.total_amount_g <= 0:
             return 0.0
@@ -68,6 +74,9 @@ class PortfolioPosition:
         self.total_amount_g = round(self.total_amount_g - sold_g, 4)
         self.total_cost = round(max(self.total_cost - cost_removed, 0.0), 4)
         self.realized_pnl = round(self.realized_pnl + pnl_yuan, 4)
+        # 卖出后若持仓低于满仓，清除满仓时间戳
+        if self.total_amount_g < config.T_MAX_AMOUNT_G:
+            self.full_since_ts = None
         return pnl_yuan
 
 
