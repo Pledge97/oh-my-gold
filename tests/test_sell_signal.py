@@ -181,3 +181,101 @@ def test_non_trend_up_uses_original_logic():
     assert signal is not None
     assert signal.exit_reason == ExitReason.TAKE_PROFIT_1
     assert signal.sell_ratio == pytest.approx(0.60)
+
+
+def test_timeout_tp1_triggers_at_0_3_pct():
+    """满仓超过 24 交易小时后，TP1 阈值降为 0.3%，盈利 0.3% 即触发"""
+    from backend.core.market_hours import calc_trading_seconds
+    from unittest.mock import patch
+
+    pos = PortfolioPosition()
+    # 买入 100g 满仓，记录满仓时间
+    pos.buy(1000.0, 100.0, ts=1_000_000)
+    # 触发价 = 1000 * 1.003 / 0.996 ≈ 1007.03
+    ctx = make_context(price=1007.03, ema_5m_20=990.0)
+    ctx.market_state = MarketState.OSCILLATION
+
+    # 模拟 calc_trading_seconds 返回 24 小时 + 1 秒
+    with patch("backend.signals.sell_signal.calc_trading_seconds", return_value=24 * 3600 + 1):
+        signal = check_sell_signal(pos, ctx, current_ts_ms=2_000_000)
+
+    assert signal is not None
+    assert signal.exit_reason == ExitReason.TAKE_PROFIT_1
+    assert signal.sell_ratio == pytest.approx(0.60)
+    assert "超时" in signal.reason
+
+
+def test_timeout_tp1_not_triggered_before_24h():
+    """满仓未超过 24 交易小时，仍使用原始 0.6% 阈值"""
+    from unittest.mock import patch
+
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 100.0, ts=1_000_000)
+    # 价格盈利 0.3%，不足原始 0.6% 阈值
+    ctx = make_context(price=1007.03, ema_5m_20=990.0)
+    ctx.market_state = MarketState.OSCILLATION
+
+    # 模拟 calc_trading_seconds 返回 23 小时
+    with patch("backend.signals.sell_signal.calc_trading_seconds", return_value=23 * 3600):
+        signal = check_sell_signal(pos, ctx, current_ts_ms=2_000_000)
+
+    assert signal is None
+
+
+def test_timeout_not_triggered_when_not_full():
+    """未满仓时，即使时间很长也不触发超时逻辑"""
+    from unittest.mock import patch
+
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 50.0, ts=1_000_000)  # 50g，未满仓，full_since_ts 为 None
+    ctx = make_context(price=1007.03, ema_5m_20=990.0)
+    ctx.market_state = MarketState.OSCILLATION
+
+    with patch("backend.signals.sell_signal.calc_trading_seconds", return_value=100 * 3600):
+        signal = check_sell_signal(pos, ctx, current_ts_ms=2_000_000)
+
+    assert signal is None
+
+
+def test_timeout_not_triggered_after_tp1_done():
+    """tp1 已执行后，超时逻辑不再影响（tp1 已完成）"""
+    from unittest.mock import patch
+
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 100.0, ts=1_000_000)
+    pos.tp1_done = True
+    ctx = make_context(price=1007.03, ema_5m_20=990.0)
+    ctx.market_state = MarketState.OSCILLATION
+
+    with patch("backend.signals.sell_signal.calc_trading_seconds", return_value=100 * 3600):
+        signal = check_sell_signal(pos, ctx, current_ts_ms=2_000_000)
+
+    # tp1 已完成，不会再触发 tp1
+    assert signal is None or signal.exit_reason != ExitReason.TAKE_PROFIT_1
+
+
+def test_timeout_not_triggered_in_trend_up():
+    """TREND_UP 状态下，超时逻辑不降低 TP1 阈值（TREND_UP 有自己的更高阈值）"""
+    from unittest.mock import patch
+
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 100.0, ts=1_000_000)
+    # 价格盈利 0.3%，低于 TREND_UP 的 1.2% 阈值
+    ctx = make_context(price=1007.03, ema_5m_20=990.0)
+    ctx.market_state = MarketState.TREND_UP
+    ctx.indicators.ema_2h_20 = 990.0
+
+    with patch("backend.signals.sell_signal.calc_trading_seconds", return_value=100 * 3600):
+        signal = check_sell_signal(pos, ctx, current_ts_ms=2_000_000)
+
+    assert signal is None
+
+
+def test_existing_tests_still_pass_with_new_param():
+    """原有测试传入 current_ts_ms=0 时行为不变（full_since_ts 为 None，不触发超时）"""
+    pos = make_portfolio(avg_cost=1000.0, total_g=50.0)
+    ctx = make_context(price=1010.05, ema_5m_20=990.0)
+    ctx.market_state = MarketState.OSCILLATION
+    signal = check_sell_signal(pos, ctx, current_ts_ms=0)
+    assert signal is not None
+    assert signal.exit_reason == ExitReason.TAKE_PROFIT_1
