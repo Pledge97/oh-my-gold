@@ -40,6 +40,9 @@ def check_sell_signal(
     market_state: MarketState | None = getattr(ctx, "market_state", None)
     pnl: float = portfolio.pnl_pct(price)
 
+    # 标记是否触发满仓超时逻辑
+    timeout_triggered: bool = False
+
     # TREND_UP 状态使用更高止盈阈值、更低分批卖出比例和 2H EMA20 追踪止盈
     is_trend_up: bool = market_state == MarketState.TREND_UP
     if is_trend_up:
@@ -66,10 +69,11 @@ def check_sell_signal(
             trading_secs = calc_trading_seconds(portfolio.full_since_ts, current_ts_ms)
             if trading_secs >= config.FULL_POSITION_TIMEOUT_HOURS * 3600:
                 tp1_pct = config.FULL_POSITION_TIMEOUT_TP1_PCT
+                timeout_triggered = True
 
     # 第1次止盈：达到当前市场状态对应的盈利阈值后，卖出对应比例
     if not portfolio.tp1_done and pnl >= tp1_pct:
-        timeout_note = "（满仓超时降低阈值）" if tp1_pct == config.FULL_POSITION_TIMEOUT_TP1_PCT else ""
+        timeout_note = "（满仓超时降低阈值）" if timeout_triggered else ""
         return SellSignalV2(
             exit_reason=ExitReason.TAKE_PROFIT_1,
             sell_ratio=tp1_ratio,

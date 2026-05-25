@@ -1,9 +1,9 @@
 # tests/test_sell_signal.py
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from backend.signals.sell_signal import check_sell_signal
-from backend.risk.portfolio import PortfolioPosition
 from backend.core.enums import ExitReason, MarketState
+from backend.risk.portfolio import PortfolioPosition
 
 
 def make_portfolio(avg_cost, total_g):
@@ -185,9 +185,6 @@ def test_non_trend_up_uses_original_logic():
 
 def test_timeout_tp1_triggers_at_0_3_pct():
     """满仓超过 24 交易小时后，TP1 阈值降为 0.3%，盈利 0.3% 即触发"""
-    from backend.core.market_hours import calc_trading_seconds
-    from unittest.mock import patch
-
     pos = PortfolioPosition()
     # 买入 100g 满仓，记录满仓时间
     pos.buy(1000.0, 100.0, ts=1_000_000)
@@ -207,8 +204,6 @@ def test_timeout_tp1_triggers_at_0_3_pct():
 
 def test_timeout_tp1_not_triggered_before_24h():
     """满仓未超过 24 交易小时，仍使用原始 0.6% 阈值"""
-    from unittest.mock import patch
-
     pos = PortfolioPosition()
     pos.buy(1000.0, 100.0, ts=1_000_000)
     # 价格盈利 0.3%，不足原始 0.6% 阈值
@@ -224,8 +219,6 @@ def test_timeout_tp1_not_triggered_before_24h():
 
 def test_timeout_not_triggered_when_not_full():
     """未满仓时，即使时间很长也不触发超时逻辑"""
-    from unittest.mock import patch
-
     pos = PortfolioPosition()
     pos.buy(1000.0, 50.0, ts=1_000_000)  # 50g，未满仓，full_since_ts 为 None
     ctx = make_context(price=1007.03, ema_5m_20=990.0)
@@ -239,8 +232,6 @@ def test_timeout_not_triggered_when_not_full():
 
 def test_timeout_not_triggered_after_tp1_done():
     """tp1 已执行后，超时逻辑不再影响（tp1 已完成）"""
-    from unittest.mock import patch
-
     pos = PortfolioPosition()
     pos.buy(1000.0, 100.0, ts=1_000_000)
     pos.tp1_done = True
@@ -256,8 +247,6 @@ def test_timeout_not_triggered_after_tp1_done():
 
 def test_timeout_not_triggered_in_trend_up():
     """TREND_UP 状态下，超时逻辑不降低 TP1 阈值（TREND_UP 有自己的更高阈值）"""
-    from unittest.mock import patch
-
     pos = PortfolioPosition()
     pos.buy(1000.0, 100.0, ts=1_000_000)
     # 价格盈利 0.3%，低于 TREND_UP 的 1.2% 阈值
