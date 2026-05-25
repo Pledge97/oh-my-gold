@@ -151,5 +151,13 @@ def load_portfolio_from_signals(conn: Connection) -> PortfolioPosition:
             portfolio.tp1_done = True
         if sig_type == "TAKE_PROFIT_2":
             portfolio.tp2_done = True
+    # 重启恢复：若当前持仓达到满仓，从最后一笔买入信号推导满仓时间
+    if portfolio.total_amount_g >= config.T_MAX_AMOUNT_G:
+        last_buy_ts = None
+        for row in reversed(rows):
+            if row["type"] in BUY_TYPES:
+                last_buy_ts = int(row["ts"])
+                break
+        portfolio.full_since_ts = last_buy_ts
     return portfolio
 

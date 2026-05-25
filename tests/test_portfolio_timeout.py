@@ -74,3 +74,63 @@ def test_full_since_ts_resets_after_sell_and_refill():
     assert pos.full_since_ts is None
     pos.buy(1005.0, 10.0, ts=3000)                   # 重新满仓，full_since_ts=3000
     assert pos.full_since_ts == 3000
+
+
+def test_load_portfolio_restores_full_since_ts():
+    """重启恢复：满仓状态下，full_since_ts 从最后一笔买入信号的 ts 推导"""
+    import sqlite3
+    from backend.risk.portfolio import load_portfolio_from_signals
+    from backend import config
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("""
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            mode TEXT,
+            price REAL,
+            amount_g REAL,
+            reason TEXT,
+            pnl_yuan REAL
+        )
+    """)
+    # 模拟三批买入达到满仓
+    conn.execute("INSERT INTO signals (ts, type, mode, price, amount_g, reason) VALUES (1000, 'BUY', 'OSCILLATION', 1000.0, 50.0, '')")
+    conn.execute("INSERT INTO signals (ts, type, mode, price, amount_g, reason) VALUES (2000, 'ADD_LOT', 'OSCILLATION', 990.0, 30.0, '')")
+    conn.execute("INSERT INTO signals (ts, type, mode, price, amount_g, reason) VALUES (3000, 'ADD_LOT', 'OSCILLATION', 980.0, 20.0, '')")
+    conn.commit()
+
+    portfolio = load_portfolio_from_signals(conn)
+
+    assert portfolio.total_amount_g == pytest.approx(100.0)
+    assert portfolio.full_since_ts == 3000  # 最后一笔买入的 ts
+
+
+def test_load_portfolio_no_full_since_ts_when_not_full():
+    """重启恢复：未满仓时，full_since_ts 为 None"""
+    import sqlite3
+    from backend.risk.portfolio import load_portfolio_from_signals
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("""
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            mode TEXT,
+            price REAL,
+            amount_g REAL,
+            reason TEXT,
+            pnl_yuan REAL
+        )
+    """)
+    conn.execute("INSERT INTO signals (ts, type, mode, price, amount_g, reason) VALUES (1000, 'BUY', 'OSCILLATION', 1000.0, 50.0, '')")
+    conn.commit()
+
+    portfolio = load_portfolio_from_signals(conn)
+
+    assert portfolio.total_amount_g == pytest.approx(50.0)
+    assert portfolio.full_since_ts is None
