@@ -195,7 +195,7 @@ export function SignalPanel({ isMobile = false }: { isMobile?: boolean }) {
             <span style={{ color: '#4a6a8a' }}>浮盈 </span>
             <span
               style={{
-                color: (portfolio.pnl_yuan ?? 0) >= 0 ? '#00ff88' : '#ff4d4f',
+                color: (portfolio.pnl_yuan ?? 0) >= 0 ? '#ff4d4f' : '#00ff88',
                 fontFamily: "'Courier New', monospace"
               }}
             >
