@@ -13,6 +13,42 @@ class ExitSignalV2:
     reason: str               # 人类可读的原因描述
 
 
+def calc_trigger_price(avg_cost: float, pnl_pct: float) -> float:
+    """
+    根据平均成本和目标盈亏率，计算触发价格（扣除卖出手续费后达到目标盈亏）。
+
+    Args:
+        avg_cost: 平均成本价（元/g）
+        pnl_pct: 目标盈亏率（如 0.006 表示 0.6%，-0.025 表示 -2.5%）
+
+    Returns:
+        触发价格（元/g），保留2位小数
+    """
+    return round(avg_cost * (1 + pnl_pct) / (1 - config.SELL_FEE_RATE), 2)
+
+
+def get_next_stop_price(portfolio: PortfolioPosition, current_pnl_pct: float) -> float | None:
+    """
+    获取下一次止损触发价格，用于前端展示。
+
+    Args:
+        portfolio: 当前持仓
+        current_pnl_pct: 当前盈亏率
+
+    Returns:
+        下一次止损触发价格，如果已触发清仓则返回 None
+    """
+    if portfolio.is_empty():
+        return None
+
+    if current_pnl_pct > config.FORCE_HALF_LOSS_PCT:
+        return calc_trigger_price(portfolio.avg_cost, config.FORCE_HALF_LOSS_PCT)
+    elif current_pnl_pct > config.CLEAR_ALL_LOSS_PCT:
+        return calc_trigger_price(portfolio.avg_cost, config.CLEAR_ALL_LOSS_PCT)
+
+    return None
+
+
 def check_exit_signal(
     portfolio: PortfolioPosition,
     current_price: float,

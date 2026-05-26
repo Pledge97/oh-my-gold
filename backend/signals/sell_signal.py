@@ -5,20 +5,7 @@ from backend.core.enums import ExitReason, MarketState
 from backend.risk.portfolio import PortfolioPosition
 from backend import config
 from backend.core.market_hours import calc_trading_seconds
-
-
-def calc_trigger_price(avg_cost: float, pnl_pct: float) -> float:
-    """
-    根据平均成本和目标盈亏率，计算触发价格（扣除卖出手续费后达到目标盈亏）。
-
-    Args:
-        avg_cost: 平均成本价（元/g）
-        pnl_pct: 目标盈亏率（如 0.006 表示 0.6%，-0.025 表示 -2.5%）
-
-    Returns:
-        触发价格（元/g），保留2位小数
-    """
-    return round(avg_cost * (1 + pnl_pct) / (1 - config.SELL_FEE_RATE), 2)
+from backend.signals.exit_signal import calc_trigger_price
 
 
 def get_next_tp_price(portfolio: PortfolioPosition, ctx) -> float | None:
@@ -60,31 +47,6 @@ def get_next_tp_price(portfolio: PortfolioPosition, ctx) -> float | None:
         return calc_trigger_price(portfolio.avg_cost, tp2_pct)
 
     # TP2 已完成：追踪止盈无固定价格
-    return None
-
-
-def get_next_stop_price(portfolio: PortfolioPosition, current_pnl_pct: float) -> float | None:
-    """
-    获取下一次止损触发价格。
-
-    Args:
-        portfolio: 当前持仓
-        current_pnl_pct: 当前盈亏率
-
-    Returns:
-        下一次止损触发价格，如果已触发清仓则返回 None
-    """
-    if portfolio.is_empty():
-        return None
-
-    if current_pnl_pct > config.FORCE_HALF_LOSS_PCT:
-        # 当前盈亏 > -2.5%，显示第一档止损（减仓50%）
-        return calc_trigger_price(portfolio.avg_cost, config.FORCE_HALF_LOSS_PCT)
-    elif current_pnl_pct > config.CLEAR_ALL_LOSS_PCT:
-        # 当前盈亏在 -2.5% 和 -3.5% 之间，显示第二档止损（清仓）
-        return calc_trigger_price(portfolio.avg_cost, config.CLEAR_ALL_LOSS_PCT)
-
-    # 当前盈亏 <= -3.5%，已触发清仓
     return None
 
 
