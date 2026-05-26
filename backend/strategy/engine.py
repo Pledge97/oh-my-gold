@@ -5,7 +5,7 @@ from backend.risk.portfolio import PortfolioPosition, load_portfolio_from_signal
 from backend.risk.circuit_breaker import CircuitBreaker
 from backend.risk.risk_manager import RiskManager
 from backend.signals.regime_signal import detect_regime
-from backend.signals.buy_signal import check_buy_signal
+from backend.signals.buy_signal import check_buy_signal, get_next_buy_price
 from backend.signals.sell_signal import check_sell_signal, get_next_tp_price, get_next_stop_price
 from backend.signals.exit_signal import check_exit_signal
 from backend.db.database import get_conn
@@ -84,16 +84,9 @@ class StrategyEngine:
     def _portfolio_snapshot(self, price: float, pnl_pct: float, ctx) -> dict:
         """生成 WebSocket portfolio 字段快照，含下次触发节点。"""
         avg_cost = self._portfolio.avg_cost
-        atr = max(ctx.indicators.atr_5m, 5.0)  # 最小5元，避免间距过小
-        has_position = not self._portfolio.is_empty()
 
-        # 下次买入触发价：空仓用布林下轨，有仓用 last_buy_price - ATR 间距
-        if not has_position:
-            next_buy = ctx.indicators.bb_lower or None
-        elif self._portfolio.total_amount_g < config.T_MAX_AMOUNT_G and atr and self._portfolio.last_buy_price:
-            next_buy = round(self._portfolio.last_buy_price - config.ATR_ADD_LOT_MULTIPLIER * atr, 2)
-        else:
-            next_buy = None  # 满仓
+        # 下次买入触发价：从 buy_signal 模块统一计算
+        next_buy = get_next_buy_price(self._portfolio, ctx)
 
         # 止盈触发价：根据 tp1_done/tp2_done 状态显示下一个未完成的止盈档位
         next_tp = get_next_tp_price(self._portfolio, ctx)

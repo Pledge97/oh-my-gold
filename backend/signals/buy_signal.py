@@ -160,3 +160,27 @@ def _check_trend_buy(
 
     # 有仓时加仓规则同震荡模式
     return _check_oscillation_buy(ctx, portfolio, last_buy_price)
+
+
+def get_next_buy_price(portfolio, ctx) -> float | None:
+    """
+    获取下一次买入触发价格，用于前端展示。
+
+    Args:
+        portfolio: 当前持仓
+        ctx: MarketContext（需包含 indicators.bb_lower, indicators.atr_5m, last_buy_price）
+
+    Returns:
+        下一次买入触发价格，满仓时返回 None
+    """
+    if portfolio.total_amount_g >= config.T_MAX_AMOUNT_G:
+        return None
+
+    if portfolio.is_empty():
+        return ctx.indicators.bb_lower or None
+
+    atr = max(ctx.indicators.atr_5m, 5.0)
+    if portfolio.last_buy_price:
+        return round(portfolio.last_buy_price - config.ATR_ADD_LOT_MULTIPLIER * atr, 2)
+
+    return None
