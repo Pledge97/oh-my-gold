@@ -153,6 +153,9 @@ def load_portfolio_from_signals(conn: Connection) -> PortfolioPosition:
         price = float(row["price"])
         if sig_type in BUY_TYPES:
             portfolio.buy(price, amount_g)
+            # 回放保持与实时执行一致：加仓后下一次止盈从 TP1 重新开始。
+            portfolio.tp1_done = False
+            portfolio.tp2_done = False
         elif sig_type in SELL_TYPES:
             # 回放时不调用 sell()（会重新计算盈亏），直接用存储的 pnl_yuan
             sold_g = min(amount_g, portfolio.total_amount_g)

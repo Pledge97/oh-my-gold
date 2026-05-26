@@ -70,3 +70,24 @@ def test_load_portfolio_resets_buy_anchor_after_partial_sell_above_lot1(tmp_path
 
     assert portfolio.total_amount_g == pytest.approx(60.0)
     assert portfolio.last_buy_price == pytest.approx(portfolio.avg_cost)
+
+
+def test_load_portfolio_resets_tp_flags_after_add_lot(tmp_path):
+    """验证重启回放时，止盈后再次加仓会从 TP1 重新开始。"""
+    from backend.db.database import init_db, get_conn
+    import backend.db.database as db_mod
+
+    db_mod.DB_PATH = tmp_path / "test.db"
+    init_db()
+    with get_conn() as conn:
+        insert_signal(conn, 1000, "BUY", 1000.0, 50.0)
+        insert_signal(conn, 2000, "ADD_LOT", 990.0, 30.0)
+        insert_signal(conn, 3000, "ADD_LOT", 980.0, 20.0)
+        insert_signal(conn, 4000, "TAKE_PROFIT_1", 1010.0, 60.0, 600.0)
+        insert_signal(conn, 5000, "ADD_LOT", 990.0, 10.0)
+        conn.commit()
+        portfolio = load_portfolio_from_signals(conn)
+
+    assert portfolio.total_amount_g == pytest.approx(50.0)
+    assert portfolio.tp1_done is False
+    assert portfolio.tp2_done is False
