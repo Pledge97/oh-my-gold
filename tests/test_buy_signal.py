@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from backend.signals.buy_signal import check_buy_signal
+from backend.signals.buy_signal import check_buy_signal, get_next_buy_price
 from backend.risk.portfolio import PortfolioPosition
 from backend.core.enums import MarketState, SignalType
 from backend.config import LOT1_AMOUNT_G, LOT2_AMOUNT_G, LOT3_AMOUNT_G
@@ -145,6 +145,23 @@ def test_add_refills_partial_position_to_50g():
     signal = check_buy_signal(ctx, pos, circuit_breaker_active=False, last_buy_price=1000.0)
     assert signal is not None
     assert signal.amount_g == pytest.approx(30.0)
+
+
+def test_partial_position_uses_bb_lower_not_last_buy_drop():
+    """持仓低于50g时，按空仓布林下轨价格补回第一档。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 20.0)
+    ctx = make_context(price=994.0, bb_lower=990.0, atr_5m=5.0)
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False, last_buy_price=1000.0)
+    assert signal is None
+
+
+def test_next_buy_price_for_partial_position_below_lot1_uses_bb_lower():
+    """持仓低于50g时，下一次买入展示价使用布林下轨。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 20.0)
+    ctx = make_context(price=994.0, bb_lower=990.0, atr_5m=5.0)
+    assert get_next_buy_price(pos, ctx) == pytest.approx(990.0)
 
 
 def test_add_refills_50_to_80g():

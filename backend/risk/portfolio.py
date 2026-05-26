@@ -77,7 +77,21 @@ class PortfolioPosition:
         # 卖出后若持仓低于满仓，清除满仓时间戳
         if self.total_amount_g < config.T_MAX_AMOUNT_G:
             self.full_since_ts = None
+        self._refresh_buy_anchor_after_sell()
         return pnl_yuan
+
+    def _refresh_buy_anchor_after_sell(self) -> None:
+        """
+        卖出后刷新下一次加仓锚点。
+
+        剩余持仓低于首批仓位时，下一次按空仓布林下轨补回第一档；
+        剩余持仓达到首批及以上时，下一次按剩余持仓均价向下间隔加仓。
+        """
+        if self.is_empty() or self.total_amount_g < config.LOT1_AMOUNT_G:
+            self.last_buy_price = None
+            return
+
+        self.last_buy_price = self.avg_cost
 
 
 def calc_sell_pnl(sold_g: float, sell_price: float, avg_cost: float, fee_rate: float) -> float:
@@ -145,6 +159,7 @@ def load_portfolio_from_signals(conn: Connection) -> PortfolioPosition:
             avg = portfolio.avg_cost
             portfolio.total_amount_g = round(portfolio.total_amount_g - sold_g, 4)
             portfolio.total_cost = round(max(portfolio.total_cost - avg * sold_g, 0.0), 4)
+            portfolio._refresh_buy_anchor_after_sell()
             if row["pnl_yuan"] is not None:
                 portfolio.realized_pnl = round(portfolio.realized_pnl + float(row["pnl_yuan"]), 4)
         if sig_type == "TAKE_PROFIT_1":
@@ -160,4 +175,3 @@ def load_portfolio_from_signals(conn: Connection) -> PortfolioPosition:
                 break
         portfolio.full_since_ts = last_buy_ts
     return portfolio
-

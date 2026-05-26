@@ -109,6 +109,18 @@ def _check_oscillation_buy(
     if portfolio.total_amount_g >= config.T_MAX_AMOUNT_G:
         return None
 
+    # 持仓不足首批时，按空仓建仓价格补回第一档，不再沿用上次买入价下跌间距。
+    if portfolio.total_amount_g < config.LOT1_AMOUNT_G:
+        if price <= bb_lower:
+            target_amount_g = config.LOT1_AMOUNT_G
+            amount_g = round(target_amount_g - portfolio.total_amount_g, 4)
+            return BuySignalV2(
+                signal_type=SignalType.ADD_LOT,
+                amount_g=amount_g,
+                reason=f"价格{price:.2f}触及布林下轨{bb_lower:.2f}，补仓至{target_amount_g:.0f}g",
+            )
+        return None
+
     # 需要上次买入价才能判断加仓间距
     if last_buy_price is None:
         return None
@@ -177,6 +189,9 @@ def get_next_buy_price(portfolio, ctx) -> float | None:
         return None
 
     if portfolio.is_empty():
+        return ctx.indicators.bb_lower or None
+
+    if portfolio.total_amount_g < config.LOT1_AMOUNT_G:
         return ctx.indicators.bb_lower or None
 
     atr = max(ctx.indicators.atr_5m, 5.0)
