@@ -7,6 +7,87 @@ from backend import config
 from backend.core.market_hours import calc_trading_seconds
 
 
+def calc_trigger_price(avg_cost: float, pnl_pct: float) -> float:
+    """
+    根据平均成本和目标盈亏率，计算触发价格（扣除卖出手续费后达到目标盈亏）。
+
+    Args:
+        avg_cost: 平均成本价（元/g）
+        pnl_pct: 目标盈亏率（如 0.006 表示 0.6%，-0.025 表示 -2.5%）
+
+    Returns:
+        触发价格（元/g），保留2位小数
+    """
+    return round(avg_cost * (1 + pnl_pct) / (1 - config.SELL_FEE_RATE), 2)
+
+
+def get_next_tp_price(portfolio: PortfolioPosition, ctx) -> float | None:
+    """
+    获取下一次止盈触发价格。
+
+    Args:
+        portfolio: 当前持仓
+        ctx: MarketContext（需包含 market_state, ts 等字段）
+
+    Returns:
+        下一次止盈触发价格，如果已完成所有止盈则返回 None
+    """
+    if portfolio.is_empty():
+        return None
+
+    market_state = getattr(ctx, "market_state", None)
+
+    if not portfolio.tp1_done:
+        # TP1 未完成：计算 TP1 触发价
+        tp1_pct = config.TAKE_PROFIT_1_PCT
+        if market_state == MarketState.TREND_UP:
+            tp1_pct = config.TREND_TAKE_PROFIT_1_PCT
+        elif (
+            market_state != MarketState.TREND_UP
+            and portfolio.full_since_ts is not None
+            and portfolio.total_amount_g >= config.T_MAX_AMOUNT_G
+            and getattr(ctx, "ts", None)
+        ):
+            # 满仓超时：使用降低后的 TP1 阈值
+            trading_secs = calc_trading_seconds(portfolio.full_since_ts, ctx.ts)
+            if trading_secs >= config.FULL_POSITION_TIMEOUT_HOURS * 3600:
+                tp1_pct = config.FULL_POSITION_TIMEOUT_TP1_PCT
+        return calc_trigger_price(portfolio.avg_cost, tp1_pct)
+
+    elif not portfolio.tp2_done:
+        # TP1 已完成，TP2 未完成：计算 TP2 触发价
+        tp2_pct = config.TREND_TAKE_PROFIT_2_PCT if market_state == MarketState.TREND_UP else config.TAKE_PROFIT_2_PCT
+        return calc_trigger_price(portfolio.avg_cost, tp2_pct)
+
+    # TP2 已完成：追踪止盈无固定价格
+    return None
+
+
+def get_next_stop_price(portfolio: PortfolioPosition, current_pnl_pct: float) -> float | None:
+    """
+    获取下一次止损触发价格。
+
+    Args:
+        portfolio: 当前持仓
+        current_pnl_pct: 当前盈亏率
+
+    Returns:
+        下一次止损触发价格，如果已触发清仓则返回 None
+    """
+    if portfolio.is_empty():
+        return None
+
+    if current_pnl_pct > config.FORCE_HALF_LOSS_PCT:
+        # 当前盈亏 > -2.5%，显示第一档止损（减仓50%）
+        return calc_trigger_price(portfolio.avg_cost, config.FORCE_HALF_LOSS_PCT)
+    elif current_pnl_pct > config.CLEAR_ALL_LOSS_PCT:
+        # 当前盈亏在 -2.5% 和 -3.5% 之间，显示第二档止损（清仓）
+        return calc_trigger_price(portfolio.avg_cost, config.CLEAR_ALL_LOSS_PCT)
+
+    # 当前盈亏 <= -3.5%，已触发清仓
+    return None
+
+
 @dataclass
 class SellSignalV2:
     exit_reason: ExitReason     # 触发原因（枚举）

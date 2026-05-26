@@ -7,7 +7,7 @@ from backend.risk.circuit_breaker import CircuitBreaker
 from backend.risk.risk_manager import RiskManager
 from backend.signals.regime_signal import detect_regime
 from backend.signals.buy_signal import check_buy_signal
-from backend.signals.sell_signal import check_sell_signal
+from backend.signals.sell_signal import check_sell_signal, get_next_tp_price, get_next_stop_price
 from backend.signals.exit_signal import check_exit_signal
 from backend.db.database import get_conn
 from typing import Optional
@@ -97,40 +97,10 @@ class StrategyEngine:
             next_buy = None  # 满仓
 
         # 止盈触发价：根据 tp1_done/tp2_done 状态显示下一个未完成的止盈档位
-        next_tp = None
-        if has_position:
-            market_state = getattr(ctx, "market_state", None)
-            if not self._portfolio.tp1_done:
-                # TP1 未完成：计算 TP1 触发价（满仓超时时使用降低后的阈值）
-                tp1_pct = config.TAKE_PROFIT_1_PCT
-                if market_state == MarketState.TREND_UP:
-                    tp1_pct = config.TREND_TAKE_PROFIT_1_PCT
-                elif (
-                    market_state != MarketState.TREND_UP
-                    and self._portfolio.full_since_ts is not None
-                    and self._portfolio.total_amount_g >= config.T_MAX_AMOUNT_G
-                    and getattr(ctx, "ts", None)
-                ):
-                    trading_secs = calc_trading_seconds(self._portfolio.full_since_ts, ctx.ts)
-                    if trading_secs >= config.FULL_POSITION_TIMEOUT_HOURS * 3600:
-                        tp1_pct = config.FULL_POSITION_TIMEOUT_TP1_PCT
-                next_tp = round(avg_cost * (1 + tp1_pct) / (1 - config.SELL_FEE_RATE), 2)
-            elif not self._portfolio.tp2_done:
-                # TP1 已完成，TP2 未完成：计算 TP2 触发价
-                tp2_pct = config.TREND_TAKE_PROFIT_2_PCT if market_state == MarketState.TREND_UP else config.TAKE_PROFIT_2_PCT
-                next_tp = round(avg_cost * (1 + tp2_pct) / (1 - config.SELL_FEE_RATE), 2)
-            # TP2 已完成：next_tp = None（追踪止盈无固定价格）
+        next_tp = get_next_tp_price(self._portfolio, ctx)
 
         # 止损触发价：根据当前盈亏显示下一个止损档位
-        next_stop = None
-        if has_position:
-            if pnl_pct > config.FORCE_HALF_LOSS_PCT:
-                # 当前盈亏 > -2.5%，显示第一档止损（减仓50%）
-                next_stop = round(avg_cost * (1 + config.FORCE_HALF_LOSS_PCT) / (1 - config.SELL_FEE_RATE), 2)
-            elif pnl_pct > config.CLEAR_ALL_LOSS_PCT:
-                # 当前盈亏在 -2.5% 和 -3.5% 之间，显示第二档止损（清仓）
-                next_stop = round(avg_cost * (1 + config.CLEAR_ALL_LOSS_PCT) / (1 - config.SELL_FEE_RATE), 2)
-            # 当前盈亏 <= -3.5%，next_stop = None（已触发清仓）
+        next_stop = get_next_stop_price(self._portfolio, pnl_pct)
 
         return {
             "round_counter": self._portfolio.round_counter,
