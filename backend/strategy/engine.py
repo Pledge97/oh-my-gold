@@ -1,7 +1,6 @@
 # backend/strategy/engine.py
 from backend.core.context import MarketContext
-from backend.core.enums import ExitReason, MarketState
-from backend.core.market_hours import calc_trading_seconds
+from backend.core.enums import ExitReason
 from backend.risk.portfolio import PortfolioPosition, load_portfolio_from_signals, calc_sell_pnl
 from backend.risk.circuit_breaker import CircuitBreaker
 from backend.risk.risk_manager import RiskManager
