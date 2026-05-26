@@ -1,6 +1,7 @@
 # backend/strategy/engine.py
 from backend.core.context import MarketContext
-from backend.core.enums import ExitReason
+from backend.core.enums import ExitReason, MarketState
+from backend.core.market_hours import calc_trading_seconds
 from backend.risk.portfolio import PortfolioPosition, load_portfolio_from_signals, calc_sell_pnl
 from backend.risk.circuit_breaker import CircuitBreaker
 from backend.risk.risk_manager import RiskManager
@@ -96,7 +97,20 @@ class StrategyEngine:
             next_buy = None  # 满仓
 
         # 止盈触发价：avg_cost × (1 + 止盈率) / (1 - 手续费率)，扣手续费后净盈达标
-        next_tp = round(avg_cost * (1 + config.TAKE_PROFIT_1_PCT) / (1 - config.SELL_FEE_RATE), 2) if has_position else None
+        # 满仓超时时使用降低后的 TP1 阈值
+        tp1_pct = config.TAKE_PROFIT_1_PCT
+        if (
+            has_position
+            and not self._portfolio.tp1_done
+            and getattr(ctx, "market_state", None) != MarketState.TREND_UP
+            and self._portfolio.full_since_ts is not None
+            and self._portfolio.total_amount_g >= config.T_MAX_AMOUNT_G
+            and getattr(ctx, "ts", None)
+        ):
+            trading_secs = calc_trading_seconds(self._portfolio.full_since_ts, ctx.ts)
+            if trading_secs >= config.FULL_POSITION_TIMEOUT_HOURS * 3600:
+                tp1_pct = config.FULL_POSITION_TIMEOUT_TP1_PCT
+        next_tp = round(avg_cost * (1 + tp1_pct) / (1 - config.SELL_FEE_RATE), 2) if has_position else None
 
         # 止损触发价：avg_cost × (1 + 亏损阈值) / (1 - 手续费率)，扣手续费后净亏达标
         next_stop = round(avg_cost * (1 + config.FORCE_HALF_LOSS_PCT) / (1 - config.SELL_FEE_RATE), 2) if has_position else None
