@@ -5,6 +5,7 @@ from backend.db.database import get_conn
 from backend import config
 from datetime import date, datetime
 from typing import Optional
+from backend.core.market_hours import calc_trading_time_ranges, SECONDS_PER_HOUR
 
 router = APIRouter(prefix="/api")
 
@@ -157,16 +158,31 @@ def get_performance():
 
 @router.get("/prices/tick")
 def get_tick_prices(hours: int = 24):
-    since_ms = int((datetime.now().timestamp() - hours * 3600) * 1000)
+    """返回最新累计开市 hours 小时内的 tick 价格。"""
     with get_conn() as conn:
+        # 最新 tick：本地开发环境可能没有采集服务，因此以库内最新数据作为截止时间。
+        latest = conn.execute(
+            "SELECT ts FROM prices ORDER BY ts DESC LIMIT 1"
+        ).fetchone()
+        if not latest:
+            return []
+
+        # 截止时间：价格库中最新一条 tick 的毫秒时间戳。
+        until_ms = latest["ts"]
+        # 开市区间：从最新 tick 向前累计回溯 hours 个开市小时，休市时间不会进入查询条件。
+        trading_ranges = calc_trading_time_ranges(until_ms, hours * SECONDS_PER_HOUR)
+        if not trading_ranges:
+            return []
+
+        # 区间条件：用 OR 拼接多个开市区间，避免把周末或夜间休市脏数据查出来。
+        range_conditions = " OR ".join(["(ts >= ? AND ts <= ?)"] * len(trading_ranges))
+        # 查询参数：按 SQL 条件顺序展开所有开市区间起止时间。
+        range_params = [value for trading_range in trading_ranges for value in trading_range]
+        # 窗口数据：只返回累计开市时间段内的数据。
         rows = conn.execute(
-            "SELECT ts, price FROM prices WHERE ts >= ? ORDER BY ts ASC",
-            (since_ms,)
+            f"SELECT ts, price FROM prices WHERE {range_conditions} ORDER BY ts ASC",
+            range_params,
         ).fetchall()
-        if not rows:
-            rows = conn.execute(
-                "SELECT ts, price FROM prices ORDER BY ts ASC"
-            ).fetchall()
     return [{"ts": r["ts"], "price": r["price"]} for r in rows]
 
 

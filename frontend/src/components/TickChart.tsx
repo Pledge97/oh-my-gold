@@ -24,6 +24,64 @@ const TOOLTIP_WIDTH = 150
 const TOOLTIP_HEIGHT = 72
 
 /**
+ * 将数字补齐为两位文本。
+ *
+ * @param value 需要格式化的数字。
+ * @returns 两位数字文本。
+ */
+function padTwoDigits(value: number) {
+  return String(value).padStart(2, '0')
+}
+
+/**
+ * 按 MM-dd HH:mm:ss 格式化日期时间。
+ *
+ * @param date 需要格式化的日期对象。
+ * @returns 月日和时分秒文本。
+ */
+function formatTickDateTime(date: Date) {
+  const month = padTwoDigits(date.getMonth() + 1)
+  const day = padTwoDigits(date.getDate())
+  const hour = padTwoDigits(date.getHours())
+  const minute = padTwoDigits(date.getMinutes())
+  const second = padTwoDigits(date.getSeconds())
+  return `${month}-${day} ${hour}:${minute}:${second}`
+}
+
+/**
+ * 按 HH:mm:ss 格式化横轴时间。
+ *
+ * @param date 需要格式化的日期对象。
+ * @returns 时分秒文本。
+ */
+function formatTickClockTime(date: Date) {
+  const hour = padTwoDigits(date.getHours())
+  const minute = padTwoDigits(date.getMinutes())
+  const second = padTwoDigits(date.getSeconds())
+  return `${hour}:${minute}:${second}`
+}
+
+/**
+ * 按本地时区格式化实时图 Tooltip 时间。
+ *
+ * @param time lightweight-charts 传入的时间值。
+ * @returns Tooltip 使用的月日和时分秒文本。
+ */
+function formatLocalTickTooltipTime(time: Time) {
+  if (typeof time === 'number') {
+    return formatTickDateTime(new Date(time * 1000))
+  }
+  if (typeof time === 'string') {
+    const seconds = Number(time)
+    if (Number.isFinite(seconds)) {
+      return formatTickDateTime(new Date(seconds * 1000))
+    }
+    return formatTickDateTime(new Date(`${time}T00:00:00`))
+  }
+  return formatTickDateTime(new Date(time.year, time.month - 1, time.day))
+}
+
+/**
  * 按本地时区格式化实时图横轴时间。
  *
  * @param time lightweight-charts 传入的时间值。
@@ -31,12 +89,7 @@ const TOOLTIP_HEIGHT = 72
  */
 function formatLocalTickTime(time: Time) {
   if (typeof time === 'number') {
-    return new Date(time * 1000).toLocaleTimeString(CHART_LOCALE, {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    })
+    return formatTickClockTime(new Date(time * 1000))
   }
   if (typeof time === 'string') {
     return new Date(`${time}T00:00:00`).toLocaleDateString(CHART_LOCALE)
@@ -214,7 +267,7 @@ export function TickChart({ isMobile = false }: { isMobile?: boolean }) {
       }
       tooltip.style.display = 'block'
       tooltip.innerHTML = `
-        <div style="color:#4fc3f7;margin-bottom:6px;">${formatLocalTickTime(point.time)}</div>
+        <div style="color:#4fc3f7;margin-bottom:6px;">${formatLocalTickTooltipTime(point.time)}</div>
         <div>价格：<span style="color:#f0d060">${point.value.toFixed(2)}</span></div>
       `
       placeTooltip(tooltip, param.point.x, param.point.y, container.clientWidth, container.clientHeight)
