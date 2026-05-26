@@ -8,9 +8,38 @@ from backend.core.market_hours import calc_trading_seconds
 from backend.signals.exit_signal import calc_trigger_price
 
 
+def _resolve_tp1_pct(portfolio: PortfolioPosition, market_state, ts_ms: int) -> tuple[float, bool]:
+    """
+    计算当前有效的 TP1 止盈率，以及是否触发了满仓超时降低逻辑。
+
+    Args:
+        portfolio: 当前持仓
+        market_state: 当前市场状态
+        ts_ms: 当前时间戳（毫秒），传 0 则不触发超时逻辑
+
+    Returns:
+        (tp1_pct, timeout_triggered)
+    """
+    if market_state == MarketState.TREND_UP:
+        return config.TREND_TAKE_PROFIT_1_PCT, False
+
+    tp1_pct = config.TAKE_PROFIT_1_PCT
+    if (
+        not portfolio.tp1_done
+        and portfolio.full_since_ts is not None
+        and portfolio.total_amount_g >= config.T_MAX_AMOUNT_G
+        and ts_ms > 0
+    ):
+        trading_secs = calc_trading_seconds(portfolio.full_since_ts, ts_ms)
+        if trading_secs >= config.FULL_POSITION_TIMEOUT_HOURS * 3600:
+            return config.FULL_POSITION_TIMEOUT_TP1_PCT, True
+
+    return tp1_pct, False
+
+
 def get_next_tp_price(portfolio: PortfolioPosition, ctx) -> float | None:
     """
-    获取下一次止盈触发价格。
+    获取下一次止盈触发价格，用于前端展示。
 
     Args:
         portfolio: 当前持仓
@@ -25,28 +54,13 @@ def get_next_tp_price(portfolio: PortfolioPosition, ctx) -> float | None:
     market_state = getattr(ctx, "market_state", None)
 
     if not portfolio.tp1_done:
-        # TP1 未完成：计算 TP1 触发价
-        tp1_pct = config.TAKE_PROFIT_1_PCT
-        if market_state == MarketState.TREND_UP:
-            tp1_pct = config.TREND_TAKE_PROFIT_1_PCT
-        elif (
-            market_state != MarketState.TREND_UP
-            and portfolio.full_since_ts is not None
-            and portfolio.total_amount_g >= config.T_MAX_AMOUNT_G
-            and getattr(ctx, "ts", None)
-        ):
-            # 满仓超时：使用降低后的 TP1 阈值
-            trading_secs = calc_trading_seconds(portfolio.full_since_ts, ctx.ts)
-            if trading_secs >= config.FULL_POSITION_TIMEOUT_HOURS * 3600:
-                tp1_pct = config.FULL_POSITION_TIMEOUT_TP1_PCT
+        tp1_pct, _ = _resolve_tp1_pct(portfolio, market_state, getattr(ctx, "ts", None) or 0)
         return calc_trigger_price(portfolio.avg_cost, tp1_pct)
 
-    elif not portfolio.tp2_done:
-        # TP1 已完成，TP2 未完成：计算 TP2 触发价
+    if not portfolio.tp2_done:
         tp2_pct = config.TREND_TAKE_PROFIT_2_PCT if market_state == MarketState.TREND_UP else config.TAKE_PROFIT_2_PCT
         return calc_trigger_price(portfolio.avg_cost, tp2_pct)
 
-    # TP2 已完成：追踪止盈无固定价格
     return None
 
 
@@ -83,10 +97,6 @@ def check_sell_signal(
     market_state: MarketState | None = getattr(ctx, "market_state", None)
     pnl: float = portfolio.pnl_pct(price)
 
-    # 标记是否触发满仓超时逻辑
-    timeout_triggered: bool = False
-
-    # TREND_UP 状态使用更高止盈阈值、更低分批卖出比例和 2H EMA20 追踪止盈
     is_trend_up: bool = market_state == MarketState.TREND_UP
     if is_trend_up:
         tp1_pct: float = config.TREND_TAKE_PROFIT_1_PCT
@@ -95,25 +105,14 @@ def check_sell_signal(
         tp2_ratio: float = config.TREND_TP2_SELL_RATIO
         trailing_ema: float = ctx.indicators.ema_2h_20
         ema_label: str = "2小时EMA20"
+        timeout_triggered: bool = False
     else:
-        tp1_pct = config.TAKE_PROFIT_1_PCT
         tp2_pct = config.TAKE_PROFIT_2_PCT
         tp1_ratio = config.TAKE_PROFIT_1_SELL_RATIO
         tp2_ratio = config.TAKE_PROFIT_2_SELL_RATIO
         trailing_ema = ctx.indicators.ema_5m_20
         ema_label = "5分钟EMA20"
-
-        # 满仓超时：非 TREND_UP 且满仓超过 24 交易小时，降低 TP1 阈值
-        if (
-            not portfolio.tp1_done
-            and portfolio.full_since_ts is not None
-            and portfolio.total_amount_g >= config.T_MAX_AMOUNT_G
-            and current_ts_ms > 0
-        ):
-            trading_secs = calc_trading_seconds(portfolio.full_since_ts, current_ts_ms)
-            if trading_secs >= config.FULL_POSITION_TIMEOUT_HOURS * 3600:
-                tp1_pct = config.FULL_POSITION_TIMEOUT_TP1_PCT
-                timeout_triggered = True
+        tp1_pct, timeout_triggered = _resolve_tp1_pct(portfolio, market_state, current_ts_ms)
 
     # 第1次止盈：达到当前市场状态对应的盈利阈值后，卖出对应比例
     if not portfolio.tp1_done and pnl >= tp1_pct:
