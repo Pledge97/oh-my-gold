@@ -1,7 +1,7 @@
 # tests/test_exit_signal.py
 import pytest
 from unittest.mock import MagicMock
-from backend.signals.exit_signal import check_exit_signal
+from backend.signals.exit_signal import check_exit_signal, get_next_stop_price
 from backend.risk.portfolio import PortfolioPosition
 from backend.core.enums import MarketState, ExitReason
 
@@ -47,6 +47,38 @@ def test_force_half_at_minus_2_5_pct():
     assert signal is not None
     assert signal.exit_reason == ExitReason.STOP_LOSS_HALF
     assert signal.sell_ratio == pytest.approx(0.50)
+
+
+def test_no_repeat_half_after_stop_loss_half_done():
+    """已执行减半止损后，价格仍在减半区间时不重复卖出50%。"""
+    pos = make_portfolio(1000.0, 80.0)
+    pos.stop_loss_half_done = True
+
+    signal = check_exit_signal(pos, current_price=975.0, ctx=make_context())
+
+    assert signal is None
+
+
+def test_clear_all_still_works_after_stop_loss_half_done():
+    """已执行减半止损后，跌到清仓线仍触发全部清仓。"""
+    pos = make_portfolio(1000.0, 80.0)
+    pos.stop_loss_half_done = True
+
+    signal = check_exit_signal(pos, current_price=965.0, ctx=make_context())
+
+    assert signal is not None
+    assert signal.exit_reason == ExitReason.STOP_LOSS_CLEAR
+    assert signal.sell_ratio == pytest.approx(1.0)
+
+
+def test_next_stop_price_skips_half_after_stop_loss_half_done():
+    """已执行减半止损后，下一止损价直接显示清仓触发价。"""
+    pos = make_portfolio(1000.0, 80.0)
+    pos.stop_loss_half_done = True
+
+    next_stop = get_next_stop_price(pos, current_pnl_pct=-0.01)
+
+    assert next_stop == pytest.approx(968.88, abs=0.01)
 
 
 def test_clear_all_at_minus_3_5_pct():

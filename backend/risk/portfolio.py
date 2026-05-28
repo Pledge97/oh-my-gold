@@ -23,6 +23,7 @@ class PortfolioPosition:
     total_cost: float = 0.0                 # 当前持仓总成本（元）
     tp1_done: bool = False                  # 第1次止盈是否已执行
     tp2_done: bool = False                  # 第2次止盈是否已执行
+    stop_loss_half_done: bool = False       # 第1次减半止损是否已执行
     realized_pnl: float = 0.0               # 累计已实现盈亏（元，扣除手续费）
     last_buy_price: float | None = None     # 最近一次买入价格（用于加仓判断）
     full_since_ts: int | None = None        # 达到满仓时的时间戳（毫秒），用于超时止盈计算
@@ -55,6 +56,8 @@ class PortfolioPosition:
         self.total_amount_g += amount_g
         self.total_cost += price * amount_g
         self.last_buy_price = price
+        # 买入或加仓后视为新的持仓结构，允许后续重新触发一次减半止损
+        self.stop_loss_half_done = False
         # 首次达到满仓时记录时间戳
         if ts is not None and self.full_since_ts is None and self.total_amount_g >= config.T_MAX_AMOUNT_G:
             self.full_since_ts = ts
@@ -169,6 +172,8 @@ def load_portfolio_from_signals(conn: Connection) -> PortfolioPosition:
             portfolio.tp1_done = True
         if sig_type == "TAKE_PROFIT_2":
             portfolio.tp2_done = True
+        if sig_type == "STOP_LOSS_HALF":
+            portfolio.stop_loss_half_done = True
     # 重启恢复：若当前持仓达到满仓，从最后一笔买入信号推导满仓时间
     if portfolio.total_amount_g >= config.T_MAX_AMOUNT_G:
         last_buy_ts = None

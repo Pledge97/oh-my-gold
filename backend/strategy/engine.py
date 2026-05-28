@@ -149,6 +149,8 @@ class StrategyEngine:
         sold_g = round(sold_g, 4)
         pnl_yuan = calc_sell_pnl(sold_g, ctx.price, avg_cost, config.SELL_FEE_RATE)
         self._portfolio.sell(ctx.price, sold_g, ts=ctx.ts)
+        if signal.exit_reason == ExitReason.STOP_LOSS_HALF:
+            self._portfolio.stop_loss_half_done = True
         self._save_signal(ctx, signal.exit_reason.value, sold_g, signal.reason, pnl_yuan=round(pnl_yuan, 2))
         return {"type": signal.exit_reason.value, "amount_g": sold_g, "reason": signal.reason}
 

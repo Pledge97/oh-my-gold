@@ -4,9 +4,10 @@ tests/test_strategy_v3.py
 """
 import pytest
 
-from backend.core.enums import MarketState
+from backend.core.enums import ExitReason, MarketState
 from backend.db.database import init_db, get_conn
 from backend.risk.portfolio import PortfolioPosition
+from backend.signals.exit_signal import ExitSignalV2
 from backend.strategy.engine import StrategyEngine
 
 
@@ -45,3 +46,21 @@ def test_portfolio_snapshot_has_no_lots_field():
     snapshot = engine._portfolio_snapshot(1010.0, engine._portfolio.pnl_pct(1010.0), ctx)
     assert snapshot["round_counter"] == 3
     assert "lots" not in snapshot
+
+
+def test_execute_stop_loss_half_marks_done():
+    """验证执行减半止损后，会标记本轮减半止损已完成。"""
+    engine = StrategyEngine()
+    engine._portfolio = PortfolioPosition()
+    engine._portfolio.buy(1000.0, 80.0)
+    signal = ExitSignalV2(
+        exit_reason=ExitReason.STOP_LOSS_HALF,
+        sell_ratio=0.50,
+        reason="test",
+    )
+    ctx = type("Ctx", (), {"ts": 1000, "price": 975.0, "market_state": MarketState.OSCILLATION})()
+
+    engine._execute_exit_v3(signal, ctx)
+
+    assert engine._portfolio.total_amount_g == pytest.approx(40.0)
+    assert engine._portfolio.stop_loss_half_done is True

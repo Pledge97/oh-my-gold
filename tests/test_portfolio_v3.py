@@ -91,3 +91,40 @@ def test_load_portfolio_resets_tp_flags_after_add_lot(tmp_path):
     assert portfolio.total_amount_g == pytest.approx(50.0)
     assert portfolio.tp1_done is False
     assert portfolio.tp2_done is False
+
+
+def test_load_portfolio_restores_stop_loss_half_done(tmp_path):
+    """验证重启回放时，已执行减半止损不会再次触发减半止损。"""
+    from backend.db.database import init_db, get_conn
+    import backend.db.database as db_mod
+
+    db_mod.DB_PATH = tmp_path / "test.db"
+    init_db()
+    with get_conn() as conn:
+        insert_signal(conn, 1000, "BUY", 1000.0, 50.0)
+        insert_signal(conn, 2000, "ADD_LOT", 990.0, 30.0)
+        insert_signal(conn, 3000, "STOP_LOSS_HALF", 975.0, 40.0, -1156.0)
+        conn.commit()
+        portfolio = load_portfolio_from_signals(conn)
+
+    assert portfolio.total_amount_g == pytest.approx(40.0)
+    assert portfolio.stop_loss_half_done is True
+
+
+def test_load_portfolio_resets_stop_loss_half_done_after_buy(tmp_path):
+    """验证重启回放时，减半止损后再次买入会重新允许下一轮减半止损。"""
+    from backend.db.database import init_db, get_conn
+    import backend.db.database as db_mod
+
+    db_mod.DB_PATH = tmp_path / "test.db"
+    init_db()
+    with get_conn() as conn:
+        insert_signal(conn, 1000, "BUY", 1000.0, 50.0)
+        insert_signal(conn, 2000, "ADD_LOT", 990.0, 30.0)
+        insert_signal(conn, 3000, "STOP_LOSS_HALF", 975.0, 40.0, -1156.0)
+        insert_signal(conn, 4000, "BUY", 980.0, 10.0)
+        conn.commit()
+        portfolio = load_portfolio_from_signals(conn)
+
+    assert portfolio.total_amount_g == pytest.approx(50.0)
+    assert portfolio.stop_loss_half_done is False

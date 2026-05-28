@@ -41,6 +41,11 @@ def get_next_stop_price(portfolio: PortfolioPosition, current_pnl_pct: float) ->
     if portfolio.is_empty():
         return None
 
+    if portfolio.stop_loss_half_done:
+        if current_pnl_pct > config.CLEAR_ALL_LOSS_PCT:
+            return calc_trigger_price(portfolio.avg_cost, config.CLEAR_ALL_LOSS_PCT)
+        return None
+
     if current_pnl_pct > config.FORCE_HALF_LOSS_PCT:
         return calc_trigger_price(portfolio.avg_cost, config.FORCE_HALF_LOSS_PCT)
     elif current_pnl_pct > config.CLEAR_ALL_LOSS_PCT:
@@ -88,8 +93,8 @@ def check_exit_signal(
             reason=f"T仓浮亏{pnl:.2%}≤{config.CLEAR_ALL_LOSS_PCT:.2%}，全部清仓",
         )
 
-    # 优先级3：亏损≥-2.5%，强制减仓50%
-    if pnl <= config.FORCE_HALF_LOSS_PCT:
+    # 优先级3：亏损≥-2.5%，强制减仓50%，同一轮只执行一次
+    if pnl <= config.FORCE_HALF_LOSS_PCT and not portfolio.stop_loss_half_done:
         return ExitSignalV2(
             exit_reason=ExitReason.STOP_LOSS_HALF,
             sell_ratio=0.50,
