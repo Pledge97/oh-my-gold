@@ -212,12 +212,25 @@ def test_recent_sell_allows_refill_after_cooldown():
     assert signal.signal_type == SignalType.ADD_LOT
 
 
-def test_recent_sell_allows_refill_after_large_price_drop():
-    """冷却期内若价格相对卖出价继续下跌足够距离，允许提前补仓。"""
+def test_recent_sell_blocks_refill_after_one_atr_drop():
+    """冷却期内价格只跌1倍ATR时，仍阻止补仓。"""
     pos = PortfolioPosition()
     pos.buy(1000.0, 100.0)
     pos.sell(1010.0, 60.0, ts=60_000, exit_reason=ExitReason.TAKE_PROFIT_1.value)
     ctx = make_context(price=1004.0, bb_lower=1011.0, atr_5m=5.0)
+    ctx.ts = 120_000
+
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False, last_buy_price=pos.last_buy_price)
+
+    assert signal is None
+
+
+def test_recent_sell_allows_refill_after_two_atr_drop():
+    """冷却期内价格相对卖出价继续下跌2倍ATR后，允许提前补仓。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 100.0)
+    pos.sell(1010.0, 60.0, ts=60_000, exit_reason=ExitReason.TAKE_PROFIT_1.value)
+    ctx = make_context(price=1000.0, bb_lower=1011.0, atr_5m=5.0)
     ctx.ts = 120_000
 
     signal = check_buy_signal(ctx, pos, circuit_breaker_active=False, last_buy_price=pos.last_buy_price)
