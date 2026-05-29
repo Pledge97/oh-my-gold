@@ -14,6 +14,38 @@ class BuySignalV2:
     reason: str               # 触发原因描述
 
 
+def _is_reentry_cooling_down(ctx, portfolio) -> bool:
+    """
+    判断最近卖出后是否仍处于买回冷却期。
+
+    参数：
+        ctx: MarketContext，包含 price、ts、indicators.atr_5m
+        portfolio: PortfolioPosition，包含最近一次卖出信息
+
+    返回：
+        True 表示应阻止本次买入，False 表示允许继续检查买入条件
+    """
+    last_sell_ts = getattr(portfolio, "last_sell_ts", None)
+    last_sell_price = getattr(portfolio, "last_sell_price", None)
+    if last_sell_ts is None or last_sell_price is None:
+        return False
+
+    atr = max(getattr(ctx.indicators, "atr_5m", 0.0), 0.0)
+    required_price_gap = max(
+        config.REENTRY_MIN_PRICE_GAP,
+        config.REENTRY_PRICE_GAP_ATR_MULTIPLIER * atr,
+    )
+    if ctx.price <= last_sell_price - required_price_gap:
+        return False
+
+    current_ts = getattr(ctx, "ts", 0) or 0
+    if current_ts <= 0:
+        return True
+
+    elapsed_seconds = (current_ts - last_sell_ts) / 1000
+    return elapsed_seconds < config.REENTRY_COOLDOWN_SECONDS
+
+
 def check_buy_signal(
     ctx,
     portfolio,
@@ -34,6 +66,10 @@ def check_buy_signal(
     """
     # 熔断激活时禁止建仓
     if circuit_breaker_active:
+        return None
+
+    # 刚止盈/止损后禁止按近似卖出价买回，避免反复支付手续费
+    if _is_reentry_cooling_down(ctx, portfolio):
         return None
 
     # 浮亏超过阈值时停止加仓
@@ -186,6 +222,9 @@ def get_next_buy_price(portfolio, ctx) -> float | None:
         下一次买入触发价格，满仓时返回 None
     """
     if portfolio.total_amount_g >= config.T_MAX_AMOUNT_G:
+        return None
+
+    if _is_reentry_cooling_down(ctx, portfolio):
         return None
 
     if portfolio.is_empty():

@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock
 from backend.signals.buy_signal import check_buy_signal, get_next_buy_price
 from backend.risk.portfolio import PortfolioPosition
-from backend.core.enums import MarketState, SignalType
+from backend.core.enums import ExitReason, MarketState, SignalType
 from backend.config import LOT1_AMOUNT_G, LOT2_AMOUNT_G, LOT3_AMOUNT_G
 
 
@@ -11,6 +11,7 @@ def make_context(price, bb_lower, atr_5m, market_state=MarketState.OSCILLATION,
     """构造模拟 MarketContext，使用 ctx.indicators.* 访问指标"""
     ctx = MagicMock()
     ctx.price = price
+    ctx.ts = 0
     ctx.market_state = market_state
     ctx.indicators = MagicMock()
     ctx.indicators.bb_lower = bb_lower
@@ -182,3 +183,44 @@ def test_add_refills_80_to_100g():
     signal = check_buy_signal(ctx, pos, circuit_breaker_active=False, last_buy_price=1000.0)
     assert signal is not None
     assert signal.amount_g == pytest.approx(20.0)
+
+
+def test_recent_take_profit_blocks_same_price_refill():
+    """刚止盈后，即使命中布林下轨，也不按近似卖出价补回仓位。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 100.0)
+    pos.sell(1010.0, 60.0, ts=60_000, exit_reason=ExitReason.TAKE_PROFIT_1.value)
+    ctx = make_context(price=1009.0, bb_lower=1011.0, atr_5m=5.0)
+    ctx.ts = 120_000
+
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False, last_buy_price=pos.last_buy_price)
+
+    assert signal is None
+
+
+def test_recent_sell_allows_refill_after_cooldown():
+    """卖出冷却结束后，重新满足买入条件时允许补仓。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 100.0)
+    pos.sell(1010.0, 60.0, ts=60_000, exit_reason=ExitReason.TAKE_PROFIT_1.value)
+    ctx = make_context(price=1009.0, bb_lower=1011.0, atr_5m=5.0)
+    ctx.ts = 60_000 + 31 * 60 * 1000
+
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False, last_buy_price=pos.last_buy_price)
+
+    assert signal is not None
+    assert signal.signal_type == SignalType.ADD_LOT
+
+
+def test_recent_sell_allows_refill_after_large_price_drop():
+    """冷却期内若价格相对卖出价继续下跌足够距离，允许提前补仓。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 100.0)
+    pos.sell(1010.0, 60.0, ts=60_000, exit_reason=ExitReason.TAKE_PROFIT_1.value)
+    ctx = make_context(price=1004.0, bb_lower=1011.0, atr_5m=5.0)
+    ctx.ts = 120_000
+
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False, last_buy_price=pos.last_buy_price)
+
+    assert signal is not None
+    assert signal.signal_type == SignalType.ADD_LOT

@@ -128,3 +128,40 @@ def test_load_portfolio_resets_stop_loss_half_done_after_buy(tmp_path):
 
     assert portfolio.total_amount_g == pytest.approx(50.0)
     assert portfolio.stop_loss_half_done is False
+
+
+def test_load_portfolio_restores_recent_partial_sell_guard(tmp_path):
+    """验证重启回放时会恢复当前轮次最近一次卖出冷却信息。"""
+    from backend.db.database import init_db, get_conn
+    import backend.db.database as db_mod
+
+    db_mod.DB_PATH = tmp_path / "test.db"
+    init_db()
+    with get_conn() as conn:
+        insert_signal(conn, 1000, "BUY", 1000.0, 100.0)
+        insert_signal(conn, 2000, "TAKE_PROFIT_1", 1010.0, 60.0, 500.0)
+        conn.commit()
+        portfolio = load_portfolio_from_signals(conn)
+
+    assert portfolio.last_sell_ts == 2000
+    assert portfolio.last_sell_price == pytest.approx(1010.0)
+    assert portfolio.last_sell_reason == "TAKE_PROFIT_1"
+
+
+def test_load_portfolio_restores_recent_full_clear_guard(tmp_path):
+    """验证全清仓后重启仍会用最后一笔清仓信号恢复买回冷却信息。"""
+    from backend.db.database import init_db, get_conn
+    import backend.db.database as db_mod
+
+    db_mod.DB_PATH = tmp_path / "test.db"
+    init_db()
+    with get_conn() as conn:
+        insert_signal(conn, 1000, "BUY", 1000.0, 50.0)
+        insert_signal(conn, 2000, "STOP_LOSS_CLEAR", 970.0, 50.0, -1500.0)
+        conn.commit()
+        portfolio = load_portfolio_from_signals(conn)
+
+    assert portfolio.is_empty()
+    assert portfolio.last_sell_ts == 2000
+    assert portfolio.last_sell_price == pytest.approx(970.0)
+    assert portfolio.last_sell_reason == "STOP_LOSS_CLEAR"

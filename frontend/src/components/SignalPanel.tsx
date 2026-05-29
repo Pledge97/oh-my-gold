@@ -20,11 +20,11 @@ const TYPE_COLOR: Record<string, string> = {
 const TYPE_LABEL: Record<string, string> = {
   BUY: '建仓',
   ADD_LOT: '加仓',
-  TAKE_PROFIT_1: '止盈1',
-  TAKE_PROFIT_2: '止盈2',
+  TAKE_PROFIT_1: '1轮止盈',
+  TAKE_PROFIT_2: '2轮止盈',
   TAKE_PROFIT_TRAILING: '追踪止盈',
-  STOP_LOSS_HALF: '减仓',
-  STOP_LOSS_CLEAR: '清仓',
+  STOP_LOSS_HALF: '半仓止损',
+  STOP_LOSS_CLEAR: '清仓止损',
   TREND_CLEAR: '趋势清仓'
 }
 

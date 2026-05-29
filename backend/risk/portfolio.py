@@ -27,6 +27,9 @@ class PortfolioPosition:
     realized_pnl: float = 0.0               # 累计已实现盈亏（元，扣除手续费）
     last_buy_price: float | None = None     # 最近一次买入价格（用于加仓判断）
     full_since_ts: int | None = None        # 达到满仓时的时间戳（毫秒），用于超时止盈计算
+    last_sell_ts: int | None = None         # 最近一次卖出时间戳（毫秒），用于买回冷却
+    last_sell_price: float | None = None    # 最近一次卖出价格（元/克），用于判断是否近价买回
+    last_sell_reason: str | None = None     # 最近一次卖出类型，用于重启恢复和排查交易原因
 
     @property
     def avg_cost(self) -> float:
@@ -56,17 +59,27 @@ class PortfolioPosition:
         self.total_amount_g += amount_g
         self.total_cost += price * amount_g
         self.last_buy_price = price
+        self.last_sell_ts = None
+        self.last_sell_price = None
+        self.last_sell_reason = None
         # 买入或加仓后视为新的持仓结构，允许后续重新触发一次减半止损
         self.stop_loss_half_done = False
         # 首次达到满仓时记录时间戳
         if ts is not None and self.full_since_ts is None and self.total_amount_g >= config.T_MAX_AMOUNT_G:
             self.full_since_ts = ts
 
-    def sell(self, price: float, amount_g: float, ts: int | None = None) -> float:
+    def sell(
+        self,
+        price: float,
+        amount_g: float,
+        ts: int | None = None,
+        exit_reason: str | None = None,
+    ) -> float:
         """
         按当前均价卖出指定克数，返回本次实现盈亏（用于实时交易，不用于回放）。
         回放时应使用存储的 pnl_yuan，避免重复计算。
-        ts: 卖出时间戳（毫秒），暂未使用，保留供未来扩展。
+        ts: 卖出时间戳（毫秒），用于买回冷却。
+        exit_reason: 卖出信号类型，用于重启恢复和排查交易原因。
         """
         if self.total_amount_g <= 0:
             return 0.0
@@ -80,6 +93,9 @@ class PortfolioPosition:
         # 卖出后若持仓低于满仓，清除满仓时间戳
         if self.total_amount_g < config.T_MAX_AMOUNT_G:
             self.full_since_ts = None
+        self.last_sell_ts = ts
+        self.last_sell_price = price
+        self.last_sell_reason = exit_reason
         self._refresh_buy_anchor_after_sell()
         return pnl_yuan
 
@@ -137,6 +153,28 @@ def get_current_round_signals(conn: Connection) -> list[Row]:
     ).fetchall()
 
 
+def _restore_latest_sell_guard(conn: Connection, portfolio: PortfolioPosition) -> None:
+    """
+    从 signals 表恢复最近一次卖出冷却信息。
+
+    参数:
+        conn: 数据库连接
+        portfolio: 待更新的持仓状态
+    """
+    latest_row = conn.execute(
+        "SELECT ts, type, price FROM signals "
+        "WHERE type IN (?,?,?,?,?,?,?,?) "
+        "ORDER BY ts DESC LIMIT 1",
+        BUY_TYPES + SELL_TYPES,
+    ).fetchone()
+    if latest_row is None or latest_row["type"] in BUY_TYPES:
+        return
+
+    portfolio.last_sell_ts = int(latest_row["ts"])
+    portfolio.last_sell_price = float(latest_row["price"])
+    portfolio.last_sell_reason = str(latest_row["type"])
+
+
 def load_portfolio_from_signals(conn: Connection) -> PortfolioPosition:
     """
     从当前轮次 signals 重建 V3 T 仓状态。
@@ -165,6 +203,9 @@ def load_portfolio_from_signals(conn: Connection) -> PortfolioPosition:
             avg = portfolio.avg_cost
             portfolio.total_amount_g = round(portfolio.total_amount_g - sold_g, 4)
             portfolio.total_cost = round(max(portfolio.total_cost - avg * sold_g, 0.0), 4)
+            portfolio.last_sell_ts = int(row["ts"])
+            portfolio.last_sell_price = price
+            portfolio.last_sell_reason = sig_type
             portfolio._refresh_buy_anchor_after_sell()
             if row["pnl_yuan"] is not None:
                 portfolio.realized_pnl = round(portfolio.realized_pnl + float(row["pnl_yuan"]), 4)
@@ -182,4 +223,5 @@ def load_portfolio_from_signals(conn: Connection) -> PortfolioPosition:
                 last_buy_ts = int(row["ts"])
                 break
         portfolio.full_since_ts = last_buy_ts
+    _restore_latest_sell_guard(conn, portfolio)
     return portfolio
