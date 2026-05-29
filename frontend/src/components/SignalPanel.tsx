@@ -14,7 +14,10 @@ const TYPE_COLOR: Record<string, string> = {
   TAKE_PROFIT_TRAILING: '#00d4ff',
   STOP_LOSS_HALF: '#f0a500',
   STOP_LOSS_CLEAR: '#ff4d4f',
-  TREND_CLEAR: '#ff4d4f'
+  TREND_CLEAR: '#ff4d4f',
+  CIRCUIT_BREAKER_1: '#ff4d4f',
+  CIRCUIT_BREAKER_2: '#ff4d4f',
+  CIRCUIT_BREAKER_3: '#ff4d4f'
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -25,7 +28,10 @@ const TYPE_LABEL: Record<string, string> = {
   TAKE_PROFIT_TRAILING: '追踪止盈',
   STOP_LOSS_HALF: '半仓止损',
   STOP_LOSS_CLEAR: '清仓止损',
-  TREND_CLEAR: '趋势清仓'
+  TREND_CLEAR: '趋势清仓',
+  CIRCUIT_BREAKER_1: '一级熔断',
+  CIRCUIT_BREAKER_2: '二级熔断',
+  CIRCUIT_BREAKER_3: '三级熔断'
 }
 
 /** isMobile 为 true 时使用固定高度移动端布局。 */
@@ -77,14 +83,20 @@ export function SignalPanel({ isMobile = false }: { isMobile?: boolean }) {
       dataIndex: 'price',
       key: 'price',
       width: 75,
-      render: (v: number) => <span style={{ color: '#f0d060', fontFamily: "'Courier New', monospace", fontSize: 12 }}>{v.toFixed(2)}</span>
+      render: (v: number | null) => {
+        if (v == null) return <span style={{ color: '#4a6a8a', fontSize: 11 }}>-</span>
+        return <span style={{ color: '#f0d060', fontFamily: "'Courier New', monospace", fontSize: 12 }}>{v.toFixed(2)}</span>
+      }
     },
     {
       title: '克数',
       dataIndex: 'amount_g',
       key: 'amount_g',
       width: 55,
-      render: (v: number) => <span style={{ color: '#c8d8e8', fontSize: 11 }}>{v}g</span>
+      render: (v: number | null) => {
+        if (v == null) return <span style={{ color: '#4a6a8a', fontSize: 11 }}>-</span>
+        return <span style={{ color: '#c8d8e8', fontSize: 11 }}>{v}g</span>
+      }
     },
     {
       title: '盈亏',

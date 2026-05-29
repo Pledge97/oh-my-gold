@@ -64,3 +64,22 @@ def test_execute_stop_loss_half_marks_done():
 
     assert engine._portfolio.total_amount_g == pytest.approx(40.0)
     assert engine._portfolio.stop_loss_half_done is True
+
+
+def test_execute_stop_loss_triggers_level3_breaker_after_daily_limit():
+    """验证策略执行止损达到单日上限后，会接入三级熔断。"""
+    engine = StrategyEngine()
+    signal = ExitSignalV2(
+        exit_reason=ExitReason.STOP_LOSS_CLEAR,
+        sell_ratio=1.0,
+        reason="test",
+    )
+    ctx = type("Ctx", (), {"ts": 1000, "price": 965.0, "market_state": MarketState.OSCILLATION})()
+
+    for _ in range(3):
+        engine._portfolio = PortfolioPosition()
+        engine._portfolio.buy(1000.0, 50.0)
+        engine._execute_exit_v3(signal, ctx)
+
+    assert engine.cb.is_active
+    assert engine.cb.state.level == 3

@@ -151,6 +151,8 @@ class StrategyEngine:
         self._portfolio.sell(ctx.price, sold_g, ts=ctx.ts, exit_reason=signal.exit_reason.value)
         if signal.exit_reason == ExitReason.STOP_LOSS_HALF:
             self._portfolio.stop_loss_half_done = True
+        if signal.exit_reason in (ExitReason.STOP_LOSS_HALF, ExitReason.STOP_LOSS_CLEAR):
+            self.cb.on_stop_loss()
         self._save_signal(ctx, signal.exit_reason.value, sold_g, signal.reason, pnl_yuan=round(pnl_yuan, 2))
         return {"type": signal.exit_reason.value, "amount_g": sold_g, "reason": signal.reason}
 

@@ -44,12 +44,12 @@ export interface WsMessage {
 }
 
 export interface Signal {
-  id: number
+  id: number | string
   ts: number
   type: string
   mode: string
-  price: number
-  amount_g: number
+  price: number | null
+  amount_g: number | null
   reason: string
   /** 卖出信号的本次已实现盈亏（元）；买入信号为 null */
   pnl_yuan?: number | null

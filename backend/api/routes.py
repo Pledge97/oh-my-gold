@@ -14,7 +14,34 @@ router = APIRouter(prefix="/api")
 def get_signals(limit: int = 50):
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT * FROM signals ORDER BY ts DESC LIMIT ?", (limit,)
+            """
+            SELECT * FROM (
+                SELECT
+                    CAST(id AS TEXT) AS id,
+                    ts,
+                    type,
+                    mode,
+                    price,
+                    amount_g,
+                    reason,
+                    pnl_yuan
+                FROM signals
+                UNION ALL
+                SELECT
+                    'cb-' || id AS id,
+                    trigger_ts AS ts,
+                    'CIRCUIT_BREAKER_' || level AS type,
+                    '' AS mode,
+                    NULL AS price,
+                    NULL AS amount_g,
+                    reason,
+                    NULL AS pnl_yuan
+                FROM circuit_breaker_logs
+            )
+            ORDER BY ts DESC
+            LIMIT ?
+            """,
+            (limit,),
         ).fetchall()
     return [dict(r) for r in rows]
 
