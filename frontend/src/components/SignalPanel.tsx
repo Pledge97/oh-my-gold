@@ -7,17 +7,17 @@ import { MOBILE_PANEL_HEIGHT } from '../constants'
 const TABLE_SCROLL_HEIGHT = '100%'
 
 const TYPE_COLOR: Record<string, string> = {
-  BUY: '#ff4d4f',
+  BUY: '#ff8c00',
   ADD_LOT: '#ff8c00',
-  TAKE_PROFIT_1: '#00d4ff',
-  TAKE_PROFIT_2: '#00d4ff',
-  TAKE_PROFIT_TRAILING: '#00d4ff',
-  STOP_LOSS_HALF: '#f0a500',
-  STOP_LOSS_CLEAR: '#ff4d4f',
-  TREND_CLEAR: '#ff4d4f',
-  CIRCUIT_BREAKER_1: '#ff4d4f',
-  CIRCUIT_BREAKER_2: '#ff4d4f',
-  CIRCUIT_BREAKER_3: '#ff4d4f'
+  TAKE_PROFIT_1: '#ff4d4f',
+  TAKE_PROFIT_2: '#ff4d4f',
+  TAKE_PROFIT_TRAILING: '#ff4d4f',
+  STOP_LOSS_HALF: '#00ff88',
+  STOP_LOSS_CLEAR: '#00ff88',
+  TREND_CLEAR: '#00ff88',
+  CIRCUIT_BREAKER_1: '#00d4ff',
+  CIRCUIT_BREAKER_2: '#00d4ff',
+  CIRCUIT_BREAKER_3: '#00d4ff'
 }
 
 const TYPE_LABEL: Record<string, string> = {

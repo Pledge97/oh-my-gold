@@ -46,6 +46,24 @@ def _is_reentry_cooling_down(ctx, portfolio) -> bool:
     return elapsed_seconds < config.REENTRY_COOLDOWN_SECONDS
 
 
+def _bb_lower_buy_price(ctx) -> float:
+    """
+    计算布林下轨买入触发价。
+
+    参数：
+        ctx: MarketContext，包含 indicators.bb_lower 和 indicators.atr_5m
+
+    返回：
+        扣除缓冲后的布林下轨买入价
+    """
+    atr = max(getattr(ctx.indicators, "atr_5m", 0.0), 0.0)
+    buffer = max(
+        config.BB_LOWER_BUY_MIN_BUFFER,
+        config.BB_LOWER_BUY_BUFFER_ATR_MULTIPLIER * atr,
+    )
+    return round(ctx.indicators.bb_lower - buffer, 2)
+
+
 def check_buy_signal(
     ctx,
     portfolio,
@@ -122,22 +140,23 @@ def _check_oscillation_buy(
 ) -> Optional[BuySignalV2]:
     """
     震荡/趋势衰减模式建仓逻辑：
-    - 空仓：价格 ≤ 布林下轨 → 第1批（LOT1_AMOUNT_G）
+    - 空仓：价格明显跌破布林下轨缓冲价 → 第1批（LOT1_AMOUNT_G）
     - 持仓1批：价格从上次买入跌 ATR_ADD_LOT_MULTIPLIER×atr_5m → 第2批（LOT2_AMOUNT_G）
     - 持仓2批：价格从上次买入再跌同样间距 → 第3批（LOT3_AMOUNT_G）
     - 满仓（≥T_MAX_AMOUNT_G）：不加仓
     """
     price = ctx.price
     bb_lower = ctx.indicators.bb_lower
+    bb_buy_price = _bb_lower_buy_price(ctx)
     atr = max(ctx.indicators.atr_5m, 5.0)  # 最小5元，避免加仓间距过小
 
     if portfolio.is_empty():
-        # 空仓：触及布林下轨才建仓
-        if price <= bb_lower:
+        # 空仓：明显跌破布林下轨缓冲价才建仓
+        if price <= bb_buy_price:
             return BuySignalV2(
                 signal_type=SignalType.BUY,
                 amount_g=config.LOT1_AMOUNT_G,
-                reason=f"价格{price:.2f}触及布林下轨{bb_lower:.2f}，初始建仓",
+                reason=f"价格{price:.2f}跌破布林下轨缓冲价{bb_buy_price:.2f}（下轨{bb_lower:.2f}），初始建仓",
             )
         return None
 
@@ -147,13 +166,13 @@ def _check_oscillation_buy(
 
     # 持仓不足首批时，按空仓建仓价格补回第一档，不再沿用上次买入价下跌间距。
     if portfolio.total_amount_g < config.LOT1_AMOUNT_G:
-        if price <= bb_lower:
+        if price <= bb_buy_price:
             target_amount_g = config.LOT1_AMOUNT_G
             amount_g = round(target_amount_g - portfolio.total_amount_g, 4)
             return BuySignalV2(
                 signal_type=SignalType.ADD_LOT,
                 amount_g=amount_g,
-                reason=f"价格{price:.2f}触及布林下轨{bb_lower:.2f}，补仓至{target_amount_g:.0f}g",
+                reason=f"价格{price:.2f}跌破布林下轨缓冲价{bb_buy_price:.2f}（下轨{bb_lower:.2f}），补仓至{target_amount_g:.0f}g",
             )
         return None
 
@@ -228,10 +247,10 @@ def get_next_buy_price(portfolio, ctx) -> float | None:
         return None
 
     if portfolio.is_empty():
-        return ctx.indicators.bb_lower or None
+        return _bb_lower_buy_price(ctx) if ctx.indicators.bb_lower else None
 
     if portfolio.total_amount_g < config.LOT1_AMOUNT_G:
-        return ctx.indicators.bb_lower or None
+        return _bb_lower_buy_price(ctx) if ctx.indicators.bb_lower else None
 
     atr = max(ctx.indicators.atr_5m, 5.0)
     if portfolio.last_buy_price:

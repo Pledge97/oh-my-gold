@@ -39,6 +39,27 @@ def test_initial_lot_triggers_on_bb_lower():
     assert signal.amount_g == LOT1_AMOUNT_G
 
 
+def test_initial_lot_does_not_trigger_when_price_only_touches_bb_lower():
+    """价格只是贴近布林下轨时不触发第1批建仓。"""
+    ctx = make_context(price=981.38, bb_lower=981.45, atr_5m=5.0)
+    pos = empty_pos()
+
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False)
+
+    assert signal is None
+
+
+def test_initial_lot_triggers_after_bb_lower_break_buffer():
+    """价格跌破布林下轨缓冲后触发第1批建仓。"""
+    ctx = make_context(price=980.45, bb_lower=981.45, atr_5m=5.0)
+    pos = empty_pos()
+
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False)
+
+    assert signal is not None
+    assert signal.signal_type == SignalType.BUY
+
+
 def test_no_signal_price_above_bb_lower():
     """价格高于布林下轨时不触发"""
     ctx = make_context(price=1010.0, bb_lower=1000.0, atr_5m=5.0)
@@ -158,11 +179,11 @@ def test_partial_position_uses_bb_lower_not_last_buy_drop():
 
 
 def test_next_buy_price_for_partial_position_below_lot1_uses_bb_lower():
-    """持仓低于50g时，下一次买入展示价使用布林下轨。"""
+    """持仓低于50g时，下一次买入展示价使用布林下轨缓冲价。"""
     pos = PortfolioPosition()
     pos.buy(1000.0, 20.0)
     ctx = make_context(price=994.0, bb_lower=990.0, atr_5m=5.0)
-    assert get_next_buy_price(pos, ctx) == pytest.approx(990.0)
+    assert get_next_buy_price(pos, ctx) == pytest.approx(989.0)
 
 
 def test_add_refills_50_to_80g():

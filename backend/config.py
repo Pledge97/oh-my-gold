@@ -72,6 +72,10 @@ T_MAX_AMOUNT_G: float = 100.0  # T仓最大持仓量
 # 加仓触发间距（ATR₁₄ 的倍数）
 ATR_ADD_LOT_MULTIPLIER: float = 1.0
 
+# 布林下轨买入缓冲：避免价格刚贴近下轨就建仓
+BB_LOWER_BUY_BUFFER_ATR_MULTIPLIER: float = 0.2
+BB_LOWER_BUY_MIN_BUFFER: float = 0.5
+
 # 组合止损阈值（负数表示亏损）
 STOP_ADD_LOSS_PCT: float = -0.015   # 浮亏超过此值停止加仓
 FORCE_HALF_LOSS_PCT: float = -0.025  # 浮亏超过此值强制减仓50%
