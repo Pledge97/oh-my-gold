@@ -1,66 +1,44 @@
 # 资金配置
-BASE_POSITION_G = 50.0
-T_POSITION_G = 100.0
-CASH_G_EQUIV = 50.0
+BASE_POSITION_G = 50.0  # 底仓目标克数，用于长期持有仓位规划
+T_POSITION_G = 100.0  # T仓目标最大克数，用于短线策略仓位规划
+CASH_G_EQUIV = 50.0  # 预留现金折算克数，用于资金占用评估
 
 # 交易成本
-SELL_FEE_RATE = 0.004
-MIN_PROFIT_RATE = 0.006
-
-# 单次开仓
-UNIT_BUY_G = 20.0
-MAX_ADD_COUNT = 3
+SELL_FEE_RATE = 0.004  # 卖出手续费率，用于计算扣费后盈亏
 
 # 市场状态
-ADX_TREND_THRESHOLD = 25.0
-ADX_LOOKBACK = 3
+ADX_TREND_THRESHOLD = 25.0  # ADX 趋势判定阈值，高于该值倾向判定为趋势行情
+ADX_LOOKBACK = 3  # ADX 连续观察周期数，用于降低市场状态抖动
 
 # 指标参数
-BB_PERIOD = 20
-BB_STD = 2.0
-RSI_PERIOD = 14
-ATR_PERIOD = 14
-ADX_PERIOD = 14
-EMA_SHORT = 20
-EMA_LONG = 60
-
-# 震荡模式
-OSC_TAKE_PROFIT_RATE = 0.006
-OSC_ADD_ATR_MULT = 1.5
-OSC_STOP_LOSS_ATR_MULT = 2.0
+BB_PERIOD = 20  # 布林带计算周期
+BB_STD = 2.0  # 布林带标准差倍数
+RSI_PERIOD = 14  # RSI 计算周期
+ATR_PERIOD = 14  # ATR 计算周期
+ADX_PERIOD = 14  # ADX 计算周期
+EMA_SHORT = 20  # 短周期 EMA 参数
+EMA_LONG = 60  # 长周期 EMA 参数
 
 # 趋势模式
-TREND_STOP_LOSS_ATR_MULT = 2.0
-TREND_STOP_LOSS_FIXED = 0.015
-TREND_MIN_PROFIT = 0.008
-TREND_RSI_OVERSOLD = 40
-TREND_DECAY_TRAIL = 0.005
-
-# 风控
-DAILY_LOSS_LIMIT_RATE = 0.03
-SINGLE_STOP_LOSS_RATE = 0.015
-CONSECUTIVE_LOSS_DAYS = 3
-REDUCED_UNIT_BUY_G = 10.0
+TREND_RSI_OVERSOLD = 40  # TREND_UP 空仓回调建仓的 RSI 超卖阈值
 
 # 熔断
-CB1_TICK_PCT = 0.005
-CB1_TICK_PAUSE_MIN = 10
-CB1_5MIN_PCT = 0.015
-CB1_5MIN_PAUSE_MIN = 30
-CB2_ATR_MULT = 3.0
-CB3_DAILY_STOP_COUNT = 3
-CB3_CONSEC_DAYS = 3
-CB3_CONSEC_STOP_PER_DAY = 2
-CB_LONG_PAUSE_HOURS = 24
+CB1_TICK_PCT = 0.005  # 一级熔断 5 秒涨跌幅阈值
+CB1_TICK_PAUSE_MIN = 10  # 一级熔断 5 秒异常波动暂停分钟数
+CB1_5MIN_PCT = 0.015  # 一级熔断 5 分钟涨跌幅阈值
+CB1_5MIN_PAUSE_MIN = 30  # 一级熔断 5 分钟异常波动暂停分钟数
+CB2_ATR_MULT = 3.0  # 二级熔断 ATR 相对日均 ATR 的倍数阈值
+CB3_DAILY_STOP_COUNT = 3  # 三级熔断单日止损次数阈值
+CB_LONG_PAUSE_HOURS = 24  # 二级和三级熔断触发后的暂停小时数
 
 # 数据源
-AKSHARE_SYMBOL = "Au99.99"
-JDJYGOLD_URL = "https://api.jdjygold.com/gw2/generic/jrm/h5/m/stdLatestPrice"
-JDJYGOLD_SKU = "1961543816"
-TICK_INTERVAL_SEC = 5
+AKSHARE_SYMBOL = "Au99.99"  # AkShare 日线行情品种代码
+JDJYGOLD_URL = "https://api.jdjygold.com/gw2/generic/jrm/h5/m/stdLatestPrice"  # 京东金融积存金实时价格接口
+JDJYGOLD_SKU = "1961543816"  # 京东金融积存金商品 SKU
+TICK_INTERVAL_SEC = 5  # 实时价格采集间隔秒数
 
 # 数据库
-DB_PATH = "data/gold.db"
+DB_PATH = "data/gold.db"  # SQLite 数据库文件路径
 
 # ── 组合仓位管理（V2） ──────────────────────────────────────
 # 分批建仓量（克）
@@ -70,11 +48,11 @@ LOT3_AMOUNT_G: float = 20.0   # 第3批：加仓
 T_MAX_AMOUNT_G: float = 100.0  # T仓最大持仓量
 
 # 加仓触发间距（ATR₁₄ 的倍数）
-ATR_ADD_LOT_MULTIPLIER: float = 1.0
+ATR_ADD_LOT_MULTIPLIER: float = 1.0  # 加仓触发所需的价格下跌 ATR 倍数
 
 # 布林下轨买入缓冲：避免价格刚贴近下轨就建仓
-BB_LOWER_BUY_BUFFER_ATR_MULTIPLIER: float = 0.2
-BB_LOWER_BUY_MIN_BUFFER: float = 0.5
+BB_LOWER_BUY_BUFFER_ATR_MULTIPLIER: float = 0.2  # 布林下轨买入缓冲 ATR 倍数
+BB_LOWER_BUY_MIN_BUFFER: float = 0.5  # 布林下轨买入最小缓冲价差（元/克）
 
 # 组合止损阈值（负数表示亏损）
 STOP_ADD_LOSS_PCT: float = -0.015   # 浮亏超过此值停止加仓

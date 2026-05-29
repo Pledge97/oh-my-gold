@@ -3,7 +3,6 @@ from backend.core.context import MarketContext
 from backend.core.enums import ExitReason
 from backend.risk.portfolio import PortfolioPosition, load_portfolio_from_signals, calc_sell_pnl
 from backend.risk.circuit_breaker import CircuitBreaker
-from backend.risk.risk_manager import RiskManager
 from backend.signals.regime_signal import detect_regime
 from backend.signals.buy_signal import check_buy_signal, get_next_buy_price
 from backend.signals.sell_signal import check_sell_signal, get_next_tp_price
@@ -17,7 +16,6 @@ import time
 class StrategyEngine:
     def __init__(self):
         self.cb = CircuitBreaker()
-        self.risk = RiskManager()
 
         # V3 组合仓位（从 signals 恢复）
         self._portfolio: PortfolioPosition = PortfolioPosition()
