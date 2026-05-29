@@ -8,6 +8,7 @@ from backend.signals.buy_signal import check_buy_signal, get_next_buy_price
 from backend.signals.sell_signal import check_sell_signal, get_next_tp_price
 from backend.signals.exit_signal import check_exit_signal, get_next_stop_price
 from backend.db.database import get_conn
+from backend.notifications.pushplus import send_signal_notice
 from typing import Optional
 from backend import config
 import time
@@ -28,7 +29,7 @@ class StrategyEngine:
 
         # 2. 熔断检查
         self.cb.check_tick(ctx.price, ctx.prev_price, ctx.price_5m_ago)
-        self.cb.check_atr(ctx.indicators.atr_5m, ctx.indicators.atr_daily_mean)
+        self.cb.check_atr(ctx.indicators.atr_5m, ctx.indicators.atr_daily_mean, price=ctx.price)
 
         # 3. 计算T仓整体盈亏率
         pnl_pct = self._portfolio.pnl_pct(ctx.price)
@@ -150,7 +151,7 @@ class StrategyEngine:
         if signal.exit_reason == ExitReason.STOP_LOSS_HALF:
             self._portfolio.stop_loss_half_done = True
         if signal.exit_reason in (ExitReason.STOP_LOSS_HALF, ExitReason.STOP_LOSS_CLEAR):
-            self.cb.on_stop_loss()
+            self.cb.on_stop_loss(price=ctx.price)
         self._save_signal(ctx, signal.exit_reason.value, sold_g, signal.reason, pnl_yuan=round(pnl_yuan, 2))
         return {"type": signal.exit_reason.value, "amount_g": sold_g, "reason": signal.reason}
 
@@ -168,10 +169,11 @@ class StrategyEngine:
     def _save_signal(self, ctx: MarketContext, sig_type: str,
                      amount_g: float, reason: str, pnl_yuan: float | None = None) -> None:
         """保存策略信号，卖出信号可记录本次已实现盈亏。"""
+        ts = ctx.ts or int(time.time() * 1000)
         with get_conn() as conn:
             self._save_signal_raw(
                 conn=conn,
-                ts=ctx.ts or int(time.time() * 1000),
+                ts=ts,
                 sig_type=sig_type,
                 mode=ctx.market_state.value,
                 price=ctx.price,
@@ -179,6 +181,7 @@ class StrategyEngine:
                 reason=reason,
                 pnl_yuan=pnl_yuan,
             )
+        send_signal_notice(sig_type, ctx.price, amount_g, pnl_yuan, reason)
 
     def _save_signal_raw(self, conn, ts: int, sig_type: str, mode: str, price: float,
                          amount_g: float, reason: str, pnl_yuan: float | None = None) -> None:

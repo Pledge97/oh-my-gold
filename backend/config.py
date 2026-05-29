@@ -1,3 +1,5 @@
+import os
+
 # 资金配置
 BASE_POSITION_G = 50.0  # 底仓目标克数，用于长期持有仓位规划
 T_POSITION_G = 100.0  # T仓目标最大克数，用于短线策略仓位规划
@@ -39,6 +41,15 @@ TICK_INTERVAL_SEC = 5  # 实时价格采集间隔秒数
 
 # 数据库
 DB_PATH = "data/gold.db"  # SQLite 数据库文件路径
+
+# PushPlus 微信提醒
+PUSHPLUS_BATCH_SEND_URL = "http://www.pushplus.plus/batchSend"  # PushPlus 多渠道发送接口地址
+PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN", "2febfc5b33e949319215ae85764f2f43")  # PushPlus 用户令牌
+PUSHPLUS_TOPIC = os.getenv("PUSHPLUS_TOPIC", "oh-my-gold")  # PushPlus 群组编码
+PUSHPLUS_TEMPLATE = os.getenv("PUSHPLUS_TEMPLATE", "html")  # PushPlus 消息模板
+PUSHPLUS_CHANNEL = os.getenv("PUSHPLUS_CHANNEL", "wechat")  # PushPlus 发送渠道
+PUSHPLUS_OPTION = os.getenv("PUSHPLUS_OPTION", "")  # PushPlus 渠道配置编码，微信渠道无需配置
+PUSHPLUS_TIMEOUT_SEC = 5.0  # PushPlus 请求超时时间
 
 # ── 组合仓位管理（V2） ──────────────────────────────────────
 # 分批建仓量（克）

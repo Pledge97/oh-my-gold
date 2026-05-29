@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from backend.db.database import get_conn
 from backend import config
 from backend.core.market_hours import CST
+from backend.notifications.pushplus import send_circuit_breaker_notice
 from datetime import datetime
 
 
@@ -42,7 +43,7 @@ class CircuitBreaker:
             tick_pct = abs(price - prev_price) / prev_price
             if tick_pct >= config.CB1_TICK_PCT:
                 self._activate(1, now_ms + config.CB1_TICK_PAUSE_MIN * 60_000,
-                               f"5秒涨跌幅={tick_pct:.3%}", tick_pct)
+                               f"5秒涨跌幅={tick_pct:.3%}", tick_pct, price=price)
                 return
 
         # 一级：5分钟涨跌幅
@@ -50,22 +51,23 @@ class CircuitBreaker:
             pct_5m = abs(price - price_5m_ago) / price_5m_ago
             if pct_5m >= config.CB1_5MIN_PCT:
                 self._activate(1, now_ms + config.CB1_5MIN_PAUSE_MIN * 60_000,
-                               f"5分钟涨跌幅={pct_5m:.3%}", pct_5m)
+                               f"5分钟涨跌幅={pct_5m:.3%}", pct_5m, price=price)
 
-    def check_atr(self, atr_current: float, atr_daily_mean: float) -> None:
+    def check_atr(self, atr_current: float, atr_daily_mean: float, price: float | None = None) -> None:
         if self.is_active or atr_daily_mean <= 0:
             return
         if atr_current >= config.CB2_ATR_MULT * atr_daily_mean:
             resume_ts = self._long_pause_resume_ts()
             self._activate(2, resume_ts,
                            f"ATR={atr_current:.2f} 超过均值{config.CB2_ATR_MULT}倍",
-                           atr_current / atr_daily_mean)
+                           atr_current / atr_daily_mean,
+                           price=price)
 
-    def on_stop_loss(self) -> None:
+    def on_stop_loss(self, price: float | None = None) -> None:
         self._daily_stop_count += 1
         if self._daily_stop_count >= config.CB3_DAILY_STOP_COUNT:
             self._activate(3, self._long_pause_resume_ts(),
-                           f"单日止损{self._daily_stop_count}次", self._daily_stop_count)
+                           f"单日止损{self._daily_stop_count}次", self._daily_stop_count, price=price)
 
     def reset_daily(self) -> None:
         self._daily_stop_count = 0
@@ -74,7 +76,8 @@ class CircuitBreaker:
         if self._state.level == 3:
             self._state = BreakerState()
 
-    def _activate(self, level: int, resume_ts: int, reason: str, value: float) -> None:
+    def _activate(self, level: int, resume_ts: int, reason: str, value: float,
+                  price: float | None = None) -> None:
         self._state = BreakerState(active=True, level=level,
                                    resume_ts=resume_ts, reason=reason)
         with get_conn() as conn:
@@ -84,6 +87,7 @@ class CircuitBreaker:
                    VALUES (?, ?, ?, ?, ?)""",
                 (int(time.time() * 1000), level, reason, value, resume_ts),
             )
+        send_circuit_breaker_notice(level, price, reason)
 
     def _long_pause_resume_ts(self) -> int:
         """返回长暂停解除时间戳（毫秒）。"""
