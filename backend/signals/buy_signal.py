@@ -4,6 +4,7 @@ from typing import Optional
 from backend.core.context import MarketContext
 from backend.core.enums import MarketState, SignalType
 from backend import config
+from backend.risk.portfolio import FULL_CLEAR_TYPES
 
 
 @dataclass
@@ -12,6 +13,27 @@ class BuySignalV2:
     signal_type: SignalType   # BUY（初始建仓）或 ADD_LOT（加仓）
     amount_g: float           # 本次买入克数
     reason: str               # 触发原因描述
+
+
+def _get_reentry_cooling_config(last_sell_reason: str | None) -> tuple[int, float, float]:
+    """
+    获取最近一次卖出后重新买入的冷却参数。
+    参数:
+        last_sell_reason: 最近一次卖出信号类型。
+    返回:
+        冷却秒数、提前买回所需 ATR 倍数、提前买回最小价格间距。
+    """
+    if last_sell_reason in FULL_CLEAR_TYPES:
+        return (
+            config.FULL_CLEAR_REENTRY_COOLDOWN_SECONDS,
+            config.FULL_CLEAR_REENTRY_PRICE_GAP_ATR_MULTIPLIER,
+            config.FULL_CLEAR_REENTRY_MIN_PRICE_GAP,
+        )
+    return (
+        config.REENTRY_COOLDOWN_SECONDS,
+        config.REENTRY_PRICE_GAP_ATR_MULTIPLIER,
+        config.REENTRY_MIN_PRICE_GAP,
+    )
 
 
 def _is_reentry_cooling_down(ctx, portfolio) -> bool:
@@ -27,13 +49,15 @@ def _is_reentry_cooling_down(ctx, portfolio) -> bool:
     """
     last_sell_ts = getattr(portfolio, "last_sell_ts", None)
     last_sell_price = getattr(portfolio, "last_sell_price", None)
+    last_sell_reason = getattr(portfolio, "last_sell_reason", None)
     if last_sell_ts is None or last_sell_price is None:
         return False
 
+    cooldown_seconds, price_gap_atr_multiplier, min_price_gap = _get_reentry_cooling_config(last_sell_reason)
     atr = max(getattr(ctx.indicators, "atr_5m", 0.0), 0.0)
     required_price_gap = max(
-        config.REENTRY_MIN_PRICE_GAP,
-        config.REENTRY_PRICE_GAP_ATR_MULTIPLIER * atr,
+        min_price_gap,
+        price_gap_atr_multiplier * atr,
     )
     if ctx.price <= last_sell_price - required_price_gap:
         return False
@@ -43,7 +67,7 @@ def _is_reentry_cooling_down(ctx, portfolio) -> bool:
         return True
 
     elapsed_seconds = (current_ts - last_sell_ts) / 1000
-    return elapsed_seconds < config.REENTRY_COOLDOWN_SECONDS
+    return elapsed_seconds < cooldown_seconds
 
 
 def _bb_lower_buy_price(ctx) -> float:

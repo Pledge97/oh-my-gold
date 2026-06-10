@@ -1,14 +1,18 @@
 """PushPlus 微信提醒封装。"""
 
 import logging
+from datetime import datetime
 from typing import Any
 
 import httpx
 
 from backend import config
+from backend.core.market_hours import CST
 
 
 logger = logging.getLogger(__name__)  # 当前模块日志记录器
+
+CIRCUIT_BREAKER_RESUME_TIME_FORMAT = "%Y-%m-%d %H:%M:%S"  # 熔断恢复时间展示格式
 
 
 TYPE_LABEL: dict[str, str] = {
@@ -40,6 +44,11 @@ def _get_type_label(sig_type: str) -> str:
     return TYPE_LABEL.get(sig_type, sig_type)
 
 
+def _format_resume_time(resume_ts: int) -> str:
+    """格式化熔断恢复时间。"""
+    return datetime.fromtimestamp(resume_ts / 1000, tz=CST).strftime(CIRCUIT_BREAKER_RESUME_TIME_FORMAT)
+
+
 def build_signal_message_content(
     sig_type: str,
     price: float,
@@ -60,11 +69,19 @@ def build_signal_message_content(
     )
 
 
-def build_circuit_breaker_message_content(level: int, price: float | None, reason: str) -> str:
+def build_circuit_breaker_message_content(
+    level: int,
+    price: float | None,
+    reason: str,
+    resume_ts: int,
+) -> str:
     """构建熔断信号微信提醒正文。"""
     sig_type = f"CIRCUIT_BREAKER_{level}"
     type_label = _get_type_label(sig_type)
-    return f"当前金价￥{_format_money(price)}，触发了{type_label}，原因：{reason}。"
+    return (
+        f"当前金价￥{_format_money(price)}，触发了{type_label}，"
+        f"原因：{reason}，恢复时间：{_format_resume_time(resume_ts)}。"
+    )
 
 
 def send_pushplus_message(title: str, content: str) -> bool:
@@ -115,10 +132,15 @@ def send_signal_notice(
     return send_pushplus_message(title, content)
 
 
-def send_circuit_breaker_notice(level: int, price: float | None, reason: str) -> bool:
+def send_circuit_breaker_notice(
+    level: int,
+    price: float | None,
+    reason: str,
+    resume_ts: int,
+) -> bool:
     """发送熔断信号微信提醒。"""
     sig_type = f"CIRCUIT_BREAKER_{level}"
     type_label = _get_type_label(sig_type)
     title = f"金价:{_format_money(price)} {type_label}"
-    content = build_circuit_breaker_message_content(level, price, reason)
+    content = build_circuit_breaker_message_content(level, price, reason, resume_ts)
     return send_pushplus_message(title, content)

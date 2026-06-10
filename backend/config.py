@@ -90,3 +90,6 @@ FULL_POSITION_TIMEOUT_TP1_PCT: float = 0.003  # 超时后降低的 TP1 止盈率
 REENTRY_COOLDOWN_SECONDS: int = 30 * 60       # 止盈/止损卖出后，默认30分钟内不按近似价格买回
 REENTRY_PRICE_GAP_ATR_MULTIPLIER: float = 2.0 # 冷却期内价格至少继续下跌2个ATR才允许提前买回
 REENTRY_MIN_PRICE_GAP: float = 10.0            # 提前买回的最小价格间距（元/克）
+FULL_CLEAR_REENTRY_COOLDOWN_SECONDS: int = 12 * 60 * 60       # 清仓后，默认12小时内不按近似价格买回
+FULL_CLEAR_REENTRY_PRICE_GAP_ATR_MULTIPLIER: float = 3.0       # 清仓冷却期内价格至少继续下跌3个ATR才允许提前买回
+FULL_CLEAR_REENTRY_MIN_PRICE_GAP: float = 20.0                 # 清仓后提前买回的最小价格间距（元/克）

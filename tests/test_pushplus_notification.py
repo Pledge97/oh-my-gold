@@ -1,5 +1,6 @@
 import httpx
 import pytest
+from datetime import datetime
 
 from backend.core.enums import MarketState
 
@@ -50,16 +51,35 @@ def test_build_add_lot_message_content_omits_pnl():
 
 
 def test_build_circuit_breaker_message_content_omits_amount_and_pnl():
-    """验证熔断通知正文只展示金价、信号类型和原因。"""
+    """验证熔断通知正文不展示克数和盈亏，但展示恢复时间。"""
     from backend.notifications.pushplus import build_circuit_breaker_message_content
+
+    resume_ts = int(datetime.fromisoformat("2026-06-10T18:30:00+08:00").timestamp() * 1000)
 
     content = build_circuit_breaker_message_content(
         level=2,
         price=725.0,
         reason="ATR异常",
+        resume_ts=resume_ts,
     )
 
-    assert content == "当前金价￥725.00，触发了二级熔断，原因：ATR异常。"
+    assert content == "当前金价￥725.00，触发了二级熔断，原因：ATR异常，恢复时间：2026-06-10 18:30:00。"
+
+
+def test_build_circuit_breaker_message_content_includes_resume_time():
+    """验证熔断通知正文展示北京时间恢复时间。"""
+    from backend.notifications.pushplus import build_circuit_breaker_message_content
+
+    resume_ts = int(datetime.fromisoformat("2026-06-10T18:30:00+08:00").timestamp() * 1000)
+
+    content = build_circuit_breaker_message_content(
+        level=3,
+        price=725.0,
+        reason="单日止损3次",
+        resume_ts=resume_ts,
+    )
+
+    assert "恢复时间：2026-06-10 18:30:00" in content
 
 
 def test_send_pushplus_message_posts_batch_send_payload(monkeypatch):
@@ -136,10 +156,13 @@ def test_send_circuit_breaker_notice_uses_price_and_type_title(monkeypatch):
 
     monkeypatch.setattr(pushplus, "send_pushplus_message", fake_send_pushplus_message)
 
+    resume_ts = int(datetime.fromisoformat("2026-06-10T18:30:00+08:00").timestamp() * 1000)
+
     ok = pushplus.send_circuit_breaker_notice(
         level=3,
         price=723.456,
         reason="测试三级熔断",
+        resume_ts=resume_ts,
     )
 
     assert ok is True
@@ -180,9 +203,9 @@ def test_circuit_breaker_activation_sends_wechat_notice(tmp_path, monkeypatch):
 
     sent = []
 
-    def fake_send_circuit_breaker_notice(level, price, reason):
+    def fake_send_circuit_breaker_notice(level, price, reason, resume_ts):
         """记录熔断通知参数。"""
-        sent.append((level, price, reason))
+        sent.append((level, price, reason, resume_ts))
         return True
 
     monkeypatch.setattr(db_mod, "DB_PATH", tmp_path / "test.db")
@@ -192,4 +215,4 @@ def test_circuit_breaker_activation_sends_wechat_notice(tmp_path, monkeypatch):
     cb = CircuitBreaker()
     cb.check_tick(price=1006.0, prev_price=1000.0, price_5m_ago=1000.0)
 
-    assert sent == [(1, 1006.0, "5秒涨跌幅=0.600%")]
+    assert sent == [(1, 1006.0, "5秒涨跌幅=0.600%", cb.state.resume_ts)]

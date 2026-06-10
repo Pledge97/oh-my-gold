@@ -90,6 +90,60 @@ def test_add_lot2_triggers_after_1atr_drop():
     assert signal.amount_g == LOT2_AMOUNT_G
 
 
+def test_full_clear_blocks_reentry_after_normal_cooldown():
+    """清仓后，普通30分钟冷却结束仍不能重新建仓。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 100.0)
+    pos.sell(1010.0, 100.0, ts=60_000, exit_reason=ExitReason.TAKE_PROFIT_TRAILING.value)
+    ctx = make_context(price=1009.0, bb_lower=1011.0, atr_5m=5.0)
+    ctx.ts = 60_000 + 31 * 60 * 1000
+
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False)
+
+    assert signal is None
+
+
+def test_full_clear_blocks_early_reentry_before_min_price_gap():
+    """清仓冷却期内，价格只继续下跌3个ATR但未达到20元最小间距时不买回。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 100.0)
+    pos.sell(1010.0, 100.0, ts=60_000, exit_reason=ExitReason.TAKE_PROFIT_TRAILING.value)
+    ctx = make_context(price=995.0, bb_lower=1011.0, atr_5m=5.0)
+    ctx.ts = 120_000
+
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False)
+
+    assert signal is None
+
+
+def test_full_clear_allows_early_reentry_after_strict_price_gap():
+    """清仓冷却期内，价格继续下跌达到严格间距后允许提前买回。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 100.0)
+    pos.sell(1010.0, 100.0, ts=60_000, exit_reason=ExitReason.TAKE_PROFIT_TRAILING.value)
+    ctx = make_context(price=990.0, bb_lower=1011.0, atr_5m=5.0)
+    ctx.ts = 120_000
+
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False)
+
+    assert signal is not None
+    assert signal.signal_type == SignalType.BUY
+
+
+def test_full_clear_allows_reentry_after_strict_cooldown():
+    """清仓12小时冷却结束后，满足建仓条件时允许重新买入。"""
+    pos = PortfolioPosition()
+    pos.buy(1000.0, 100.0)
+    pos.sell(1010.0, 100.0, ts=60_000, exit_reason=ExitReason.TAKE_PROFIT_TRAILING.value)
+    ctx = make_context(price=1009.0, bb_lower=1011.0, atr_5m=5.0)
+    ctx.ts = 60_000 + 12 * 60 * 60 * 1000
+
+    signal = check_buy_signal(ctx, pos, circuit_breaker_active=False)
+
+    assert signal is not None
+    assert signal.signal_type == SignalType.BUY
+
+
 def test_add_lot3_triggers_after_another_atr_drop():
     """持仓80g，价格从上次买入再跌1×ATR(min=5)触发第3批加仓"""
     pos = PortfolioPosition()

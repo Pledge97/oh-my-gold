@@ -21,6 +21,7 @@ class CircuitBreaker:
     def __init__(self):
         self._state = BreakerState()
         self._daily_stop_count: int = 0
+        self._daily_stop_date: str = self._current_cst_date()  # 单日止损计数所属的北京时间日期
         self._consec_stop_days: list[str] = []  # 日期字符串列表
         self._restore_from_db()
 
@@ -64,6 +65,7 @@ class CircuitBreaker:
                            price=price)
 
     def on_stop_loss(self, price: float | None = None) -> None:
+        self._ensure_daily_stop_count_for_today()
         self._daily_stop_count += 1
         if self._daily_stop_count >= config.CB3_DAILY_STOP_COUNT:
             self._activate(3, self._long_pause_resume_ts(),
@@ -71,6 +73,7 @@ class CircuitBreaker:
 
     def reset_daily(self) -> None:
         self._daily_stop_count = 0
+        self._daily_stop_date = self._current_cst_date()
 
     def manual_resume(self) -> None:
         if self._state.level == 3:
@@ -87,11 +90,22 @@ class CircuitBreaker:
                    VALUES (?, ?, ?, ?, ?)""",
                 (int(time.time() * 1000), level, reason, value, resume_ts),
             )
-        send_circuit_breaker_notice(level, price, reason)
+        send_circuit_breaker_notice(level, price, reason, resume_ts)
 
     def _long_pause_resume_ts(self) -> int:
         """返回长暂停解除时间戳（毫秒）。"""
         return int(time.time() * 1000) + config.CB_LONG_PAUSE_HOURS * 60 * 60_000
+
+    def _current_cst_date(self) -> str:
+        """返回当前北京时间日期字符串，用于标记单日止损计数归属日。"""
+        return datetime.fromtimestamp(time.time(), tz=CST).date().isoformat()
+
+    def _ensure_daily_stop_count_for_today(self) -> None:
+        """确保内存中的止损计数只统计当前北京时间自然日。"""
+        today = self._current_cst_date()
+        if self._daily_stop_date != today:
+            self._daily_stop_count = 0
+            self._daily_stop_date = today
 
     def _restore_from_db(self) -> None:
         """从数据库恢复当天止损次数和未到期熔断状态。"""
@@ -105,6 +119,7 @@ class CircuitBreaker:
     def _restore_daily_stop_count(self, conn) -> None:
         """从当天止损信号恢复三级熔断计数。"""
         now_dt = datetime.fromtimestamp(time.time(), tz=CST)
+        self._daily_stop_date = now_dt.date().isoformat()
         day_start = now_dt.replace(hour=0, minute=0, second=0, microsecond=0)
         day_start_ts = int(day_start.timestamp() * 1000)
         row = conn.execute(

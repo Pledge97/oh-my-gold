@@ -1,6 +1,7 @@
 # tests/test_circuit_breaker.py
 import pytest
 import time
+from datetime import datetime
 from backend.db.database import init_db
 from backend.db.database import get_conn
 from backend.risk.circuit_breaker import CircuitBreaker
@@ -62,6 +63,26 @@ def test_level3_daily_stop():
     cb.on_stop_loss()
     assert cb.is_active
     assert cb.state.level == 3
+
+
+def test_level3_stop_count_resets_after_cst_date_changes(monkeypatch):
+    """验证进程跨北京时间自然日运行时，三级熔断止损计数会重新开始。"""
+    import backend.risk.circuit_breaker as cb_mod
+
+    first_day_seconds = datetime.fromisoformat("2026-06-09T12:00:00+08:00").timestamp()
+    second_day_seconds = datetime.fromisoformat("2026-06-10T12:00:00+08:00").timestamp()
+    monkeypatch.setattr(cb_mod.time, "time", lambda: first_day_seconds)
+    cb = CircuitBreaker()
+
+    cb.on_stop_loss()
+    cb.on_stop_loss()
+    assert not cb.is_active
+
+    monkeypatch.setattr(cb_mod.time, "time", lambda: second_day_seconds)
+    cb.on_stop_loss()
+
+    assert not cb.is_active
+    assert cb._daily_stop_count == 1
 
 
 def test_level3_pauses_for_24_hours(monkeypatch):
